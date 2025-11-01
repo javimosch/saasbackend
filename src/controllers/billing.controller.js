@@ -29,7 +29,7 @@ const createCheckoutSession = asyncHandler(async (req, res) => {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${process.env.PUBLIC_URL || "http://localhost:3000"}/?checkout=success`,
-    cancel_url: `${process.env.PUBLIC_URL || "http://localhost:3000"}/pricing?checkout=cancelled`,
+    cancel_url: `${process.env.PUBLIC_URL || "http://localhost:3000"}/?checkout=cancelled`,
     metadata: { userId: userId.toString() },
   });
 
