@@ -67,6 +67,13 @@ const handleWebhook = async (req, res) => {
 
   let webhookEventDoc;
   try {
+    // Check if webhook event already exists
+    const existingEvent = await StripeWebhookEvent.findOne({ stripeEventId: event.id });
+    if (existingEvent) {
+      console.log(`Webhook event ${event.id} already processed with status: ${existingEvent.status}`);
+      return res.json({ received: true, status: 'duplicate' });
+    }
+
     // Persist webhook event to database
     webhookEventDoc = new StripeWebhookEvent({
       stripeEventId: event.id,
@@ -79,7 +86,11 @@ const handleWebhook = async (req, res) => {
     await webhookEventDoc.save();
   } catch (err) {
     console.error("Error saving webhook event:", err);
-    // Continue processing even if save fails
+    // If it's a duplicate key error, the event was already processed
+    if (err.code === 11000) {
+      return res.json({ received: true, status: 'duplicate' });
+    }
+    // Continue processing for other errors
   }
 
   try {
@@ -91,8 +102,17 @@ const handleWebhook = async (req, res) => {
         const user = await User.findOne({ stripeCustomerId: customerId });
         if (user) {
           user.stripeSubscriptionId = subscription.id;
-          user.subscriptionStatus =
-            subscription.status === "active" ? "active" : subscription.status;
+          // Map Stripe subscription status to our schema
+          const statusMapping = {
+            'active': 'active',
+            'past_due': 'past_due',
+            'unpaid': 'unpaid',
+            'canceled': 'cancelled',
+            'incomplete': 'incomplete',
+            'incomplete_expired': 'incomplete_expired',
+            'trialing': 'trialing'
+          };
+          user.subscriptionStatus = statusMapping[subscription.status] || subscription.status;
           await user.save();
         }
         break;
@@ -168,8 +188,17 @@ const reconcileSubscription = asyncHandler(async (req, res) => {
   if (subscriptions.data.length > 0) {
     const subscription = subscriptions.data[0];
     user.stripeSubscriptionId = subscription.id;
-    user.subscriptionStatus =
-      subscription.status === "active" ? "active" : subscription.status;
+    // Map Stripe subscription status to our schema
+    const statusMapping = {
+      'active': 'active',
+      'past_due': 'past_due',
+      'unpaid': 'unpaid',
+      'canceled': 'cancelled',
+      'incomplete': 'incomplete',
+      'incomplete_expired': 'incomplete_expired',
+      'trialing': 'trialing'
+    };
+    user.subscriptionStatus = statusMapping[subscription.status] || subscription.status;
     await user.save();
   } else {
     user.subscriptionStatus = "none";

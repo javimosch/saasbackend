@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
   },
   subscriptionStatus: {
     type: String,
-    enum: ['none', 'active', 'cancelled', 'past_due'],
+    enum: ['none', 'active', 'cancelled', 'past_due', 'incomplete', 'incomplete_expired', 'trialing', 'unpaid'],
     default: 'none'
   },
   stripeCustomerId: {
