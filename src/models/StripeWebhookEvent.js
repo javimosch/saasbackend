@@ -16,6 +16,9 @@ const stripeWebhookEventSchema = new mongoose.Schema({
     type: Object,
     required: true
   },
+  previousAttributes: {
+    type: Object
+  },
   api_version: {
     type: String
   },
@@ -24,13 +27,18 @@ const stripeWebhookEventSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['received', 'processed', 'failed'],
+    enum: ['received', 'processed', 'failed', 'skipped'],
     default: 'received',
     index: true
   },
   processingErrors: [{
-    type: String
+    message: String,
+    timestamp: Date
   }],
+  retryCount: {
+    type: Number,
+    default: 0
+  },
   receivedAt: {
     type: Date,
     default: Date.now,
@@ -42,5 +50,8 @@ const stripeWebhookEventSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+stripeWebhookEventSchema.index({ status: 1, receivedAt: 1 });
+stripeWebhookEventSchema.index({ eventType: 1, createdAt: -1 });
 
 module.exports = mongoose.model('StripeWebhookEvent', stripeWebhookEventSchema);

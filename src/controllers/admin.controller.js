@@ -3,6 +3,7 @@ const StripeWebhookEvent = require('../models/StripeWebhookEvent');
 const asyncHandler = require('../utils/asyncHandler');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { generateAccessToken, generateRefreshToken } = require('../utils/jwt');
+const { retryFailedWebhooks, processWebhookEvent } = require('../utils/webhookRetry');
 
 // Get all users
 const getUsers = asyncHandler(async (req, res) => {
@@ -128,6 +129,94 @@ const getWebhookEvent = asyncHandler(async (req, res) => {
   res.json({ event });
 });
 
+// Retry failed webhook events
+const retryFailedWebhookEvents = asyncHandler(async (req, res) => {
+  const { limit = 10, maxRetries = 3 } = req.body;
+  
+  const results = await retryFailedWebhooks({ limit, maxRetries });
+  
+  res.json({
+    status: 'success',
+    results
+  });
+});
+
+// Retry single webhook event
+const retrySingleWebhookEvent = asyncHandler(async (req, res) => {
+  const event = await StripeWebhookEvent.findOne({ stripeEventId: req.params.id });
+  
+  if (!event) {
+    return res.status(404).json({ error: 'Webhook event not found' });
+  }
+
+  if (event.status === 'processed') {
+    return res.status(400).json({ error: 'Event already processed' });
+  }
+
+  try {
+    await processWebhookEvent(event);
+    
+    event.status = 'processed';
+    event.processedAt = new Date();
+    await event.save();
+    
+    res.json({
+      status: 'success',
+      message: 'Event processed successfully',
+      event
+    });
+  } catch (err) {
+    event.retryCount++;
+    event.processingErrors.push({
+      message: err.message,
+      timestamp: new Date()
+    });
+    await event.save();
+    
+    res.status(500).json({
+      status: 'error',
+      message: err.message,
+      event
+    });
+  }
+});
+
+// Get webhook statistics
+const getWebhookStats = asyncHandler(async (req, res) => {
+  const stats = await StripeWebhookEvent.aggregate([
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const eventTypeStats = await StripeWebhookEvent.aggregate([
+    {
+      $group: {
+        _id: '$eventType',
+        count: { $sum: 1 },
+        failedCount: {
+          $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] }
+        }
+      }
+    },
+    { $sort: { count: -1 } }
+  ]);
+
+  const recentFailures = await StripeWebhookEvent.find({ status: 'failed' })
+    .sort({ receivedAt: -1 })
+    .limit(10)
+    .select('stripeEventId eventType receivedAt retryCount processingErrors');
+
+  res.json({
+    statusStats: stats,
+    eventTypeStats,
+    recentFailures
+  });
+});
+
 module.exports = {
   getUsers,
   getUser,
@@ -135,5 +224,8 @@ module.exports = {
   reconcileUser,
   generateToken,
   getWebhookEvents,
-  getWebhookEvent
+  getWebhookEvent,
+  retryFailedWebhookEvents,
+  retrySingleWebhookEvent,
+  getWebhookStats
 };

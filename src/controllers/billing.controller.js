@@ -2,6 +2,7 @@ const User = require("../models/User");
 const StripeWebhookEvent = require("../models/StripeWebhookEvent");
 const asyncHandler = require("../utils/asyncHandler");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const stripeService = require("../services/stripe.service");
 
 // Create Stripe Checkout Session
 const createCheckoutSession = asyncHandler(async (req, res) => {
@@ -79,6 +80,7 @@ const handleWebhook = async (req, res) => {
       stripeEventId: event.id,
       eventType: event.type,
       data: event.data.object,
+      previousAttributes: event.data.previous_attributes,
       api_version: event.api_version,
       request: event.request,
       status: "received",
@@ -95,58 +97,35 @@ const handleWebhook = async (req, res) => {
 
   try {
     switch (event.type) {
+      case "checkout.session.completed":
+        await stripeService.handleCheckoutSessionCompleted(event.data.object);
+        break;
+      
       case "customer.subscription.created":
-      case "customer.subscription.updated": {
-        const subscription = event.data.object;
-        const customerId = subscription.customer;
-        const user = await User.findOne({ stripeCustomerId: customerId });
-        if (user) {
-          user.stripeSubscriptionId = subscription.id;
-          // Map Stripe subscription status to our schema
-          const statusMapping = {
-            'active': 'active',
-            'past_due': 'past_due',
-            'unpaid': 'unpaid',
-            'canceled': 'cancelled',
-            'incomplete': 'incomplete',
-            'incomplete_expired': 'incomplete_expired',
-            'trialing': 'trialing'
-          };
-          user.subscriptionStatus = statusMapping[subscription.status] || subscription.status;
-          await user.save();
-        }
+        await stripeService.handleSubscriptionCreated(event.data.object);
         break;
-      }
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object;
-        const customerId = subscription.customer;
-        const user = await User.findOne({ stripeCustomerId: customerId });
-        if (user) {
-          user.subscriptionStatus = "cancelled";
-          await user.save();
-        }
+      
+      case "customer.subscription.updated":
+        await stripeService.handleSubscriptionUpdated(
+          event.data.object,
+          event.data.previous_attributes
+        );
         break;
-      }
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object;
-        const customerId = invoice.customer;
-        const user = await User.findOne({ stripeCustomerId: customerId });
-        if (user && user.subscriptionStatus !== "active") {
-          user.subscriptionStatus = "active";
-          await user.save();
-        }
+      
+      case "customer.subscription.deleted":
+        await stripeService.handleSubscriptionDeleted(event.data.object);
         break;
-      }
-      case "invoice.payment_failed": {
-        const invoice = event.data.object;
-        const customerId = invoice.customer;
-        const user = await User.findOne({ stripeCustomerId: customerId });
-        if (user) {
-          user.subscriptionStatus = "past_due";
-          await user.save();
-        }
+      
+      case "invoice.payment_succeeded":
+        await stripeService.handleInvoicePaymentSucceeded(event.data.object);
         break;
-      }
+      
+      case "invoice.payment_failed":
+        await stripeService.handleInvoicePaymentFailed(event.data.object);
+        break;
+      
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
     }
 
     // Update webhook event status to processed
@@ -161,7 +140,11 @@ const handleWebhook = async (req, res) => {
     // Update webhook event status to failed
     if (webhookEventDoc) {
       webhookEventDoc.status = "failed";
-      webhookEventDoc.processingErrors.push(err.message);
+      webhookEventDoc.retryCount = (webhookEventDoc.retryCount || 0) + 1;
+      webhookEventDoc.processingErrors.push({
+        message: err.message,
+        timestamp: new Date()
+      });
       await webhookEventDoc.save();
     }
 

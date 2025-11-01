@@ -15,5 +15,8 @@ router.post('/generate-token', adminController.generateToken);
 // Webhook event routes
 router.get('/stripe-webhooks', adminController.getWebhookEvents);
 router.get('/stripe-webhooks/:id', adminController.getWebhookEvent);
+router.post('/stripe-webhooks/retry', adminController.retryFailedWebhookEvents);
+router.post('/stripe-webhooks/:id/retry', adminController.retrySingleWebhookEvent);
+router.get('/stripe-webhooks-stats', adminController.getWebhookStats);
 
 module.exports = router;
