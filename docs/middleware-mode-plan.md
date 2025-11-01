@@ -33,43 +33,80 @@ The internal implementation will still leverage conditional logic based on an in
 *   **Conditional Root Route & Static Files:** The landing page route and the primary static file serving will only be registered when `saasbackend.server()` is used.
 *   **Admin Static Assets:** When `saasbackend.middleware()` is used, static assets for admin views will be served under a configurable path (defaulting to `/admin/assets`) within the returned router.
 
-### 5. Documentation (`docs/middleware-mode.md`)
+### 5. Documentation
 
-This document will be updated with:
+**Implementation Status: ✅ COMPLETED**
 
-*   Instructions on how to enable and use the middleware mode.
-*   Details on the `MIDDLEWARE_MODE` environment variable.
-*   Information about the exposed routes and the new static asset path for admin views (`/admin/assets`).
-*   An example of how to integrate the middleware into a parent Express.js application.
+The middleware mode has been implemented with the following files:
 
-## Example Usage (Parent Application)
+*   `index.js` - Main entry point exporting both `server()` and `middleware()` functions
+*   `src/middleware.js` - Express router for middleware mode
+*   `server.js` - Updated to use the new structure (calls `server()` from index.js)
+*   `example-middleware-usage.js` - Example integration in a parent application
+
+**Key Features:**
+
+*   No `MIDDLEWARE_MODE` environment variable needed - mode is determined by which function you call
+*   Admin views are rendered manually using `fs.readFile()` and `ejs.render()` to avoid view engine conflicts
+*   Static assets for admin views are served under `/admin/assets` in middleware mode
+*   Health check returns mode information (`standalone` or `middleware`)
+
+## Usage
+
+### Standalone Server Mode
+
+```javascript
+// server.js (default)
+require('dotenv').config();
+const { server } = require('./index');
+
+// Start the standalone server with default options
+server();
+
+// Or with custom options:
+server({
+  port: 3000,
+  mongodbUri: 'mongodb://localhost:27017/mydb',
+  corsOrigin: 'https://example.com'
+});
+```
+
+### Middleware Mode (Integration Example)
 
 ```javascript
 // parent-app.js
 const express = require('express');
-const saasBackendMiddleware = require('./path/to/saas-backend/src/middleware');
+const { middleware } = require('./index'); // or require('notesyncer-landing') if installed as npm package
 
 const app = express();
 
-// ... other parent application middleware and routes ...
+// Parent application's own middleware and routes
+app.use(express.json());
 
-// Mount the SaaS backend middleware
-app.use('/saas', saasBackendMiddleware({/* options such as dbConnection, corsOrigin, jwtSecret, etc */})); // All SaaS backend routes will be prefixed with /saas
+app.get('/', (req, res) => {
+  res.send('Parent Application Home');
+});
 
-// Example: Accessing a SaaS backend API endpoint
-// GET /saas/api/auth/me
+// Mount the SaaS backend middleware at /saas
+app.use('/saas', middleware({
+  mongodbUri: process.env.MONGODB_URI,  // Optional
+  corsOrigin: process.env.CORS_ORIGIN || '*',  // Optional
+  // dbConnection: mongoose.connection,  // Optional: use existing connection
+}));
 
-// Example: Accessing a SaaS backend admin view
-// GET /saas/admin/test
+// Example endpoints:
+// GET /saas/api/auth/me - API endpoint
+// GET /saas/admin/test - Admin UI (Basic Auth required)
+// GET /saas/health - Health check
+// GET /saas/admin/assets/css/styles.css - Static assets
 
-// Example: Accessing a SaaS backend admin static asset
-// GET /saas/admin/assets/css/styles.css
-
-// ... start parent application server ...
 app.listen(3001, () => {
   console.log('Parent app listening on port 3001');
+  console.log('SaaS backend mounted at /saas');
 });
 ```
+
+See `example-middleware-usage.js` for a complete working example.
 
 ## Open Questions / Considerations
 
