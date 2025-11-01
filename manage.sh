@@ -20,6 +20,9 @@ LOCAL_PATH="$(pwd)"
 # Default excludes frontend/node_modules as we deploy compiled frontend assets.
 REMOTE_SYNC_EXCLUDES="${REMOTE_SYNC_EXCLUDES:-frontend/node_modules}"
 
+# Compose file to use (defaults to compose.prod.yml for remote deployments)
+COMPOSE_FILE="${COMPOSE_FILE:-compose.prod.yml}"
+
 # Prompt for APP_NAME if not set and not in .env and write it to .env
 if [ -z "${APP_NAME}" ]; then
   if [ -f ".env" ]; then
@@ -116,7 +119,7 @@ function validate_domain_env_vars {
 # Function to follow logs on remote server
 function follow_logs {
   echo "📜 Following logs on remote server..."
-  ssh -t -p $REMOTE_PORT $REMOTE_USER@$REMOTE_HOST "cd ${REMOTE_PATH} && docker compose logs -f"
+  ssh -t -p $REMOTE_PORT $REMOTE_USER@$REMOTE_HOST "cd ${REMOTE_PATH} && docker compose -f ${COMPOSE_FILE} logs -f"
 }
 
 # Function to deploy application to remote server
@@ -144,14 +147,19 @@ function deploy_app {
   echo "Using rsync excludes: ${RSYNC_EXCLUDE_ARGS[*]}"
   rsync -avz "${RSYNC_EXCLUDE_ARGS[@]}" --progress -e "ssh -p $REMOTE_PORT" "$LOCAL_PATH/" ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/
   
-  echo "🐳 Running docker compose up on remote host..."
+  echo "🐳 Running docker compose on remote host..."
   ssh -p $REMOTE_PORT ${REMOTE_USER}@${REMOTE_HOST} << EOF
   cd ${REMOTE_PATH}
-  docker compose up -d --force-recreate
+  echo "📥 Pulling latest images..."
+  docker compose -f ${COMPOSE_FILE} pull
+  echo "🔄 Stopping containers..."
+  docker compose -f ${COMPOSE_FILE} down
+  echo "🚀 Starting containers..."
+  docker compose -f ${COMPOSE_FILE} up -d
   echo "⏳ Waiting 5 seconds for containers to start..."
   sleep 5
   echo "📜 Tailing last 100 lines of logs from 'web' service..."
-  docker compose logs --tail=100
+  docker compose -f ${COMPOSE_FILE} logs --tail=100
 EOF
   
   echo "✅ Deployment complete."
@@ -228,6 +236,7 @@ function show_env_vars {
   echo "REMOTE_USER: ${REMOTE_USER}"
   echo "REMOTE_PORT: ${REMOTE_PORT}"
   echo "REMOTE_PATH: ${REMOTE_PATH}"
+  echo "COMPOSE_FILE: ${COMPOSE_FILE}"
   echo "DOMAIN_REMOTE_HOST: ${DOMAIN_REMOTE_HOST}"
   echo "DOMAIN_REMOTE_USER: ${DOMAIN_REMOTE_USER}"
   echo "DOMAIN_REMOTE_PORT: ${DOMAIN_REMOTE_PORT}"
