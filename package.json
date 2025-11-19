@@ -1,6 +1,6 @@
 {
   "name": "saasbackend",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "description": "Micro saas template for solo-entrepreneurs",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,10 @@
     "automation",
     "ai"
   ],
-  "author": "",
+  "author": "Javier Leandro Arancibia <arancibia.javier@gmail.com>",
+  "repository": {
+    "url": "https://github.com/javimosch/saasbackend"
+  },
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
