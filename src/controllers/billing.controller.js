@@ -6,7 +6,7 @@ const stripeService = require("../services/stripe.service");
 
 // Create Stripe Checkout Session
 const createCheckoutSession = asyncHandler(async (req, res) => {
-  const { priceId } = req.body;
+  const { priceId, billingMode } = req.body;
   const userId = req.user._id;
 
   if (!priceId) {
@@ -25,13 +25,18 @@ const createCheckoutSession = asyncHandler(async (req, res) => {
     await req.user.save();
   }
 
+  const mode = billingMode === "payment" ? "payment" : "subscription";
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
-    mode: "subscription",
+    mode,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${process.env.PUBLIC_URL || "http://localhost:3000"}/?checkout=success`,
     cancel_url: `${process.env.PUBLIC_URL || "http://localhost:3000"}/?checkout=cancelled`,
-    metadata: { userId: userId.toString() },
+    metadata: {
+      userId: userId.toString(),
+      billingMode: mode,
+    },
   });
 
   res.json({ sessionId: session.id, url: session.url });
@@ -184,7 +189,26 @@ const reconcileSubscription = asyncHandler(async (req, res) => {
     user.subscriptionStatus = statusMapping[subscription.status] || subscription.status;
     await user.save();
   } else {
-    user.subscriptionStatus = "none";
+    // No active subscription found. Check for successful one-off (payment) checkouts
+    const sessions = await stripe.checkout.sessions.list({
+      customer: user.stripeCustomerId,
+      limit: 10,
+    });
+
+    const lifetimeSession = sessions.data.find((session) => {
+      const mode = session.metadata?.billingMode || session.mode;
+      return (
+        mode === "payment" &&
+        session.payment_status === "paid"
+      );
+    });
+
+    if (lifetimeSession) {
+      user.subscriptionStatus = "active";
+    } else {
+      user.subscriptionStatus = "none";
+    }
+
     await user.save();
   }
 

@@ -67,7 +67,26 @@ const reconcileUser = asyncHandler(async (req, res) => {
     user.subscriptionStatus = subscription.status === 'active' ? 'active' : subscription.status;
     await user.save();
   } else {
-    user.subscriptionStatus = 'none';
+    // No active subscription found. Check for successful one-off (payment) checkouts
+    const sessions = await stripe.checkout.sessions.list({
+      customer: user.stripeCustomerId,
+      limit: 10
+    });
+
+    const lifetimeSession = sessions.data.find((session) => {
+      const mode = session.metadata?.billingMode || session.mode;
+      return (
+        mode === 'payment' &&
+        session.payment_status === 'paid'
+      );
+    });
+
+    if (lifetimeSession) {
+      user.subscriptionStatus = 'active';
+    } else {
+      user.subscriptionStatus = 'none';
+    }
+
     await user.save();
   }
 
