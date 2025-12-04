@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaasBackend Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.24/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        .mockup-code pre {
+            padding: 1rem !important;
+            margin: 0 !important;
+        }
+        .mockup-code {
+            background: #1f2937 !important;
+        }
+        .mockup-code pre code {
+            font-family: 'Courier New', monospace;
+            line-height: 1.5;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+    <meta name="description" content="Complete documentation for SaasBackend - Micro SaaS template for solo-entrepreneurs">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <div class="navbar bg-base-100 shadow-lg">
+            <div class="flex-1">
+                <a href="index.html" class="btn btn-ghost text-xl">SaasBackend</a>
+            </div>
+            <div class="flex-none">
+                <ul class="menu menu-horizontal px-1">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="https://github.com/javimosch/saasbackend" target="_blank">GitHub</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Sidebar -->
+                <div class="lg:w-1/4">
+                    <div class="sticky top-8">
+                        <ul class="menu bg-base-200 rounded-box">
+                            <li class="menu-title"><span>Quick Start</span></li>
+                            <li><a @click.prevent="scrollTo('installation')">Installation</a></li>
+                            <li><a @click.prevent="scrollTo('environment')">Environment Setup</a></li>
+                            <li><a @click.prevent="scrollTo('integration')">Integration</a></li>
+                            
+                            <li class="menu-title"><span>Features</span></li>
+                            <li><a @click.prevent="scrollTo('authentication')">Authentication</a></li>
+                            <li><a @click.prevent="scrollTo('billing')">Billing & Stripe</a></li>
+                            <li><a @click.prevent="scrollTo('user-management')">User Management</a></li>
+                            <li><a @click.prevent="scrollTo('email-system')">Email System</a></li>
+                            <li><a @click.prevent="scrollTo('admin')">Admin Panel</a></li>
+                            <li><a @click.prevent="scrollTo('global-settings')">Global Settings</a></li>
+                            
+                            <li class="menu-title"><span>API Reference</span></li>
+                            <li><a @click.prevent="scrollTo('endpoints')">API Endpoints</a></li>
+                            <li><a @click.prevent="scrollTo('middleware')">Middleware Usage</a></li>
+                            <li><a @click.prevent="scrollTo('webhooks')">Webhooks</a></li>
+                            
+                            <li class="menu-title"><span>Examples</span></li>
+                            <li><a @click.prevent="scrollTo('examples')">Code Examples</a></li>
+                            <li><a @click.prevent="scrollTo('testing')">Testing</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="lg:w-3/4">
+                    <!-- Header -->
+                    <div class="hero bg-gradient-to-r from-primary to-secondary text-primary-content rounded-lg mb-8">
+                        <div class="hero-content text-center py-12">
+                            <div>
+                                <h1 class="text-5xl font-bold">Documentation</h1>
+                                <p class="py-6 text-xl">Complete guide to SaasBackend</p>
+                                <div class="badge badge-lg badge-accent">v1.1.0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Installation Section -->
+                    <section id="installation" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">📦 Installation</h2>
+                        <div class="card bg-base-200 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Install via NPM</h3>
+                                <div class="mockup-code">
+                                    <pre><code>npm install saasbackend</code></pre>
+                                </div>
+                                <p class="mt-4">SaasBackend is a comprehensive micro SaaS template that includes authentication, billing, user management, and admin features out of the box.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Environment Setup -->
+                    <section id="environment" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">⚙️ Environment Setup</h2>
+                        <div class="card bg-base-200 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Required Environment Variables</h3>
+                                <p class="mb-4">Create a <code class="bg-base-300 px-2 py-1 rounded">.env</code> file in your project root:</p>
+                                <div class="mockup-code">
+                                    <pre><code># Database
+MONGODB_URI=mongodb://localhost:27017/your-db-name
+
+# JWT Secrets (change in production!)
+JWT_ACCESS_SECRET=your-access-secret-change-me
+JWT_REFRESH_SECRET=your-refresh-secret-change-me
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Admin Basic Auth
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-me-in-production
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:3000
+
+# Public URL for Stripe redirects
+PUBLIC_URL=http://localhost:3000
+BILLING_RETURN_URL_RELATIVE=/dashboard
+
+# Email (optional - for password reset)
+RESEND_API_KEY=your-resend-api-key</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Integration Section -->
+                    <section id="integration" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">🔧 Integration</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Middleware Mode</h3>
+                                    <p>Integrate with existing Express apps:</p>
+                                    <div class="mockup-code mt-4">
+                                        <pre><code>const express = require('express');
+const saasbackend = require('saasbackend');
+
+const app = express();
+app.use('/api', saasbackend.middleware());
+
+app.listen(3000);</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Standalone Mode</h3>
+                                    <p>Use as a complete backend:</p>
+                                    <div class="mockup-code mt-4">
+                                        <pre><code>const saasbackend = require('saasbackend');
+
+const server = saasbackend.createServer({
+  port: 3000,
+  middleware: true
+});
+
+server.start();</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Authentication -->
+                    <section id="authentication" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">🔐 Authentication</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">JWT-based Authentication</h3>
+                                    <p>Secure authentication with access and refresh tokens:</p>
+                                    <ul class="list-disc list-inside mt-4 space-y-2">
+                                        <li>User registration and login</li>
+                                        <li>Password reset functionality</li>
+                                        <li>Token refresh mechanism</li>
+                                        <li>Secure session management</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Example: User Login</h3>
+                                    <div class="mockup-code">
+                                        <pre><code>POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "user": { ... },
+    "accessToken": "jwt-access-token",
+    "refreshToken": "jwt-refresh-token"
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Billing & Stripe -->
+                    <section id="billing" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">💳 Billing & Stripe Integration</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Stripe Features</h3>
+                                    <ul class="list-disc list-inside space-y-2">
+                                        <li>Subscription management</li>
+                                        <li>One-time payments</li>
+                                        <li>Billing portal integration</li>
+                                        <li>Webhook event handling</li>
+                                        <li>Invoice management</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Create Checkout Session</h3>
+                                    <div class="mockup-code">
+                                        <pre><code>POST /api/billing/create-checkout-session
+Content-Type: application/json
+Authorization: Bearer {access_token}
+
+{
+  "priceId": "price_1234567890",
+  "mode": "subscription"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "sessionId": "cs_test_...",
+    "url": "https://checkout.stripe.com/pay/cs_test_..."
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- User Management -->
+                    <section id="user-management" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">👥 User Management</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">User Features</h3>
+                                    <ul class="list-disc list-inside space-y-2">
+                                        <li>User profiles and settings</li>
+                                        <li>Activity logging</li>
+                                        <li>Waiting list management</li>
+                                        <li>User roles and permissions</li>
+                                        <li>Account deletion and data export</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Get User Profile</h3>
+                                    <div class="mockup-code">
+                                        <pre><code>GET /api/user/profile
+Authorization: Bearer {access_token}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "user_123",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "subscription": {
+      "status": "active",
+      "plan": "pro"
+    }
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Email System -->
+                    <section id="email-system" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">📧 Email System</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Email Features</h3>
+                                    <ul class="list-disc list-inside space-y-2">
+                                        <li>Password reset emails</li>
+                                        <li>Welcome emails</li>
+                                        <li>Notification emails</li>
+                                        <li>Email logging and tracking</li>
+                                        <li>Resend integration</li>
+                                        <li>Email templates</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Send Password Reset</h3>
+                                    <div class="mockup-code">
+                                        <pre><code>POST /api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+
+// Response
+{
+  "success": true,
+  "message": "Password reset email sent"
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Email Configuration</h3>
+                                    <p>Configure Resend API for email functionality:</p>
+                                    <div class="mockup-code">
+                                        <pre><code># In your .env file
+RESEND_API_KEY=re_123456789
+FROM_EMAIL=noreply@yourapp.com
+FROM_NAME=Your App Name
+
+# Optional: Custom email templates
+EMAIL_TEMPLATE_DIR=./templates/emails</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Admin Panel -->
+                    <section id="admin" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">⚙️ Admin Panel</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Admin Features</h3>
+                                    <ul class="list-disc list-inside space-y-2">
+                                        <li>User management and overview</li>
+                                        <li>Global settings configuration</li>
+                                        <li>System monitoring</li>
+                                        <li>Billing and subscription management</li>
+                                        <li>Activity logs and analytics</li>
+                                    </ul>
+                                    <div class="mt-4">
+                                        <p><strong>Access:</strong> <code>/admin</code> (Basic Auth required)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Global Settings -->
+                    <section id="global-settings" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">🌐 Global Settings</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Configurable Settings</h3>
+                                    <ul class="list-disc list-inside space-y-2">
+                                        <li>Site-wide configurations</li>
+                                        <li>Feature flags</li>
+                                        <li>Email templates</li>
+                                        <li>Billing settings</li>
+                                        <li>API rate limits</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Get Global Settings</h3>
+                                    <div class="mockup-code">
+                                        <pre><code>GET /api/global-settings
+Authorization: Bearer {access_token}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "siteName": "Your SaaS App",
+    "allowRegistration": true,
+    "maintenanceMode": false,
+    "emailNotifications": true
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- API Endpoints -->
+                    <section id="endpoints" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">🔗 API Endpoints</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Authentication Endpoints</h3>
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-zebra">
+                                            <thead>
+                                                <tr>
+                                                    <th>Method</th>
+                                                    <th>Endpoint</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td><span class="badge badge-primary">POST</span></td>
+                                                    <td>/api/auth/register</td>
+                                                    <td>User registration</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><span class="badge badge-primary">POST</span></td>
+                                                    <td>/api/auth/login</td>
+                                                    <td>User login</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><span class="badge badge-primary">POST</span></td>
+                                                    <td>/api/auth/refresh</td>
+                                                    <td>Refresh access token</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><span class="badge badge-secondary">GET</span></td>
+                                                    <td>/api/auth/me</td>
+                                                    <td>Get current user</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Billing Endpoints</h3>
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-zebra">
+                                            <thead>
+                                                <tr>
+                                                    <th>Method</th>
+                                                    <th>Endpoint</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td><span class="badge badge-primary">POST</span></td>
+                                                    <td>/api/billing/create-checkout-session</td>
+                                                    <td>Create Stripe checkout</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><span class="badge badge-primary">POST</span></td>
+                                                    <td>/api/billing/create-portal-session</td>
+                                                    <td>Create billing portal</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><span class="badge badge-secondary">GET</span></td>
+                                                    <td>/api/billing/subscription</td>
+                                                    <td>Get subscription status</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Webhooks -->
+                    <section id="webhooks" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">🔔 Webhooks</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Stripe Webhooks</h3>
+                                    <p>Automatic handling of Stripe events:</p>
+                                    <ul class="list-disc list-inside space-y-2 mt-4">
+                                        <li><code>customer.subscription.created</code></li>
+                                        <li><code>customer.subscription.updated</code></li>
+                                        <li><code>customer.subscription.deleted</code></li>
+                                        <li><code>invoice.payment_succeeded</code></li>
+                                        <li><code>invoice.payment_failed</code></li>
+                                    </ul>
+                                    <div class="mockup-code mt-4">
+                                        <pre><code>POST /api/billing/webhook
+Content-Type: application/json
+Stripe-Signature: t=1234567890,v1=...
+
+{
+  "type": "customer.subscription.updated",
+  "data": {
+    "object": {
+      "id": "sub_1234567890",
+      "status": "active"
+    }
+  }
+}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Testing -->
+                    <section id="testing" class="mb-12">
+                        <h2 class="text-3xl font-bold mb-6">🧪 Testing</h2>
+                        <div class="space-y-6">
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Running Tests</h3>
+                                    <div class="mockup-code">
+                                        <pre><code># Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card bg-base-200 shadow-xl">
+                                <div class="card-body">
+                                    <h3 class="card-title">Test Coverage</h3>
+                                    <p>The project includes comprehensive test suites for:</p>
+                                    <ul class="list-disc list-inside space-y-2 mt-4">
+                                        <li>Authentication flows</li>
+                                        <li>API endpoints</li>
+                                        <li>Billing operations</li>
+                                        <li>Email services</li>
+                                        <li>User management</li>
+                                        <li>Admin functions</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="text-center mt-12">
+                        <div class="alert alert-info">
+                            <span>📚 This documentation is continuously updated. Check our <a href="https://github.com/javimosch/saasbackend" class="link">GitHub repository</a> for the latest information.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer footer-center p-10 bg-base-300 text-base-content rounded">
+            <div>
+                <div class="grid grid-flow-col gap-4">
+                    <a href="https://github.com/javimosch/saasbackend" target="_blank" class="link link-hover">GitHub</a>
+                    <a href="index.html" class="link link-hover">Home</a>
+                    <a href="https://www.npmjs.com/package/saasbackend" target="_blank" class="link link-hover">NPM</a>
+                </div>
+            </div>
+            <div>
+                <p>Copyright © 2024 - SaasBackend Documentation</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            methods: {
+                scrollTo(elementId) {
+                    document.getElementById(elementId).scrollIntoView({ 
+                        behavior: 'smooth' 
+                    });
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
