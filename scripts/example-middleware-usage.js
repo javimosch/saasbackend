@@ -1,7 +1,7 @@
 // Example of integrating the SaaS backend as middleware in a parent Express.js application
 
-const express = require('express');
-const { middleware } = require('./index'); // or require('notesyncer-landing') when installed as npm package
+const express = require("express");
+const { middleware } = require("./index");
 
 const app = express();
 
@@ -9,24 +9,29 @@ const app = express();
 app.use(express.json());
 
 // Example: Parent app's landing page
-app.get('/', (req, res) => {
-  res.send('<h1>Parent Application</h1><p>SaaS backend is mounted at <a href="/saas/health">/saas</a></p>');
+app.get("/", (req, res) => {
+  res.send(
+    '<h1>Parent Application</h1><p>SaaS backend is mounted at <a href="/saas/health">/saas</a></p>',
+  );
 });
 
 // Mount the SaaS backend middleware at /saas
 // All SaaS backend routes will be prefixed with /saas
-app.use('/saas', middleware({
-  // Optional: Pass MongoDB connection string
-  mongodbUri: process.env.MONGODB_URI,
-  
-  // Optional: Configure CORS origin(s)
-  corsOrigin: process.env.CORS_ORIGIN || '*',
-  
-  // Optional: Pass existing Mongoose connection
-  // dbConnection: mongoose.connection,
-  
-  // Note: JWT_SECRET, STRIPE_SECRET_KEY, etc. should be set in process.env
-}));
+app.use(
+  "/saas",
+  middleware({
+    // Optional: Pass MongoDB connection string
+    mongodbUri: process.env.MONGODB_URI,
+
+    // Optional: Configure CORS origin(s)
+    corsOrigin: process.env.CORS_ORIGIN || "*",
+
+    // Optional: Pass existing Mongoose connection
+    // dbConnection: mongoose.connection,
+
+    // Note: JWT_SECRET, STRIPE_SECRET_KEY, etc. should be set in process.env
+  }),
+);
 
 // Examples of accessing SaaS backend endpoints:
 // - API: GET /saas/api/auth/me

@@ -76,7 +76,7 @@ server({
 ```javascript
 // parent-app.js
 const express = require('express');
-const { middleware } = require('./index'); // or require('notesyncer-landing') if installed as npm package
+const { middleware } = require('./index'); 
 
 const app = express();
 

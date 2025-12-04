@@ -18,7 +18,7 @@ Integrate the backend into your existing Express.js application:
 
 ```javascript
 const express = require('express');
-const { middleware } = require('./index'); // or 'notesyncer-landing' from npm
+const { middleware } = require('./index'); 
 
 const app = express();
 

@@ -11,7 +11,8 @@
 
 ## Overview
 
-NoteSyncer uses a standard MVC architecture with Express.js:
+Standard MVC architecture with Express.js:
+
 - **Models**: Mongoose schemas in `/src/models/`
 - **Controllers**: Business logic in `/src/controllers/`
 - **Routes**: Route definitions in `/src/routes/`
