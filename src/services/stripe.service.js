@@ -1,5 +1,13 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const User = require("../models/User");
+const stripeHelper = require("./stripeHelper.service");
+
+async function getStripe() {
+  const client = await stripeHelper.getStripeClient();
+  if (!client) {
+    throw new Error("Stripe is not configured");
+  }
+  return client;
+}
 
 class StripeService {
   async handleCheckoutSessionCompleted(session) {
@@ -142,22 +150,15 @@ class StripeService {
 
   /**
    * Update user's currentPlan based on their Stripe subscription
+   * Uses catalog mapping first, then falls back to legacy env mapping for backward compatibility
    */
   async updateUserPlanFromSubscription(user, subscriptionId) {
     try {
+      const stripe = await getStripe();
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       const priceId = subscription.items.data[0]?.price.id;
       
-      let plan = 'free';
-      
-      if (priceId === process.env.STRIPE_PRICE_ID_CREATOR) {
-        plan = 'creator';
-      } else if (priceId === process.env.STRIPE_PRICE_ID_PRO) {
-        plan = 'pro';
-      } else {
-        console.warn(`Unknown price ID: ${priceId} for subscription ${subscriptionId}`);
-        plan = 'creator'; // Default to creator for unknown active subscriptions
-      }
+      const plan = await stripeHelper.resolvePlanKeyFromPriceId(priceId);
       
       user.currentPlan = plan;
       console.log(`Updated user ${user.email} plan to ${plan} based on price ID ${priceId}`);

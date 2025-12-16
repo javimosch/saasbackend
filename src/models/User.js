@@ -40,8 +40,8 @@ const userSchema = new mongoose.Schema({
   },
   currentPlan: {
     type: String,
-    enum: ['free', 'creator', 'pro'],
-    default: 'free'
+    default: 'free',
+    trim: true
   },
   settings: {
     type: mongoose.Schema.Types.Mixed,
