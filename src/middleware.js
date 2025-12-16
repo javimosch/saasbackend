@@ -131,6 +131,8 @@ function createMiddleware(options = {}) {
   router.use("/api/settings", require("./routes/globalSettings.routes"));
   router.use("/api", require("./routes/notifications.routes"));
   router.use("/api/user", require("./routes/user.routes"));
+  router.use("/api/orgs", require("./routes/org.routes"));
+  router.use("/api/invites", require("./routes/invite.routes"));
 
   // Admin test page (protected by basic auth) - render manually to avoid view engine conflicts
   router.get("/admin/test", basicAuth, (req, res) => {

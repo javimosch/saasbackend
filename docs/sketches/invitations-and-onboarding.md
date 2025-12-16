@@ -64,10 +64,12 @@ Invite link pattern:
 - `PUT /api/onboarding` - mark steps complete (server validates allowed transitions)
 
 ### Admin/team (JWT)
-(If you implement orgs, scope to `orgId` + admin role)
-- `POST /api/invites` - create invite(s)
-- `GET /api/invites` - list invites created by user (or org)
-- `DELETE /api/invites/:id` - revoke invite
+(Scoped to `orgId` + admin role)
+- `POST /api/orgs/:orgId/invites` - create email invite
+- `GET /api/orgs/:orgId/invites` - list pending invites for org
+- `DELETE /api/orgs/:orgId/invites/:id` - revoke invite
+
+Note: Direct member addition (for existing users) is handled via `POST /api/orgs/:orgId/members` in orgs-rbac, with optional `sendNotification: true` to email the user.
 
 ### Admin (Basic Auth)
 - `GET /api/admin/invites` - list all invites (support/debug)

@@ -98,6 +98,8 @@ function startServer(options = {}) {
   app.use("/api/settings", require("./src/routes/globalSettings.routes"));
   app.use("/api", require("./src/routes/notifications.routes"));
   app.use("/api/user", require("./src/routes/user.routes"));
+  app.use("/api/orgs", require("./src/routes/org.routes"));
+  app.use("/api/invites", require("./src/routes/invite.routes"));
 
   // Admin test page (protected by basic auth)
   app.get("/admin/test", basicAuth, (req, res) => {
@@ -229,5 +231,12 @@ module.exports = {
     EmailLog: require("./src/models/EmailLog"),
     GlobalSetting: require("./src/models/GlobalSetting"),
     User: require("./src/models/User"),
+    Organization: require("./src/models/Organization"),
+    OrganizationMember: require("./src/models/OrganizationMember"),
+    Invite: require("./src/models/Invite"),
+  },
+  helpers: {
+    auth: require("./src/middleware/auth"),
+    org: require("./src/middleware/org"),
   },
 };

@@ -25,6 +25,7 @@ This should make it easy to build B2B SaaS apps where users collaborate in a sha
 - `slug` (string, unique, required)
 - `ownerUserId` (ObjectId -> User, required)
 - `billingOwnerUserId` (ObjectId -> User, optional)
+- `allowPublicJoin` (boolean, default false) - if true, authenticated users can self-join
 - `status` (`active` | `disabled`)
 - timestamps
 
@@ -65,8 +66,12 @@ All endpoints below require **JWT**.
 
 ### Membership
 - `GET /api/orgs/:orgId/members` - list members (admin+)
+- `POST /api/orgs/:orgId/members` - add existing user directly (admin+), optionally send email notification
 - `PUT /api/orgs/:orgId/members/:userId/role` - change role (owner/admin)
 - `DELETE /api/orgs/:orgId/members/:userId` - remove member (owner/admin)
+
+### Public join (if org.allowPublicJoin)
+- `POST /api/orgs/:orgId/join` - authenticated user self-joins as member
 
 ### Active org selection (optional convenience)
 - `PUT /api/user/settings` - store `activeOrgId`
