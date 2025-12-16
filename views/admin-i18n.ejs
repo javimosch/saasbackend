@@ -104,6 +104,22 @@
           <label class="block text-sm font-medium mb-2">Value</label>
           <textarea id="entryValue" class="w-full border rounded px-3 py-2" rows="6" required></textarea>
         </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">AI Translate</label>
+          <div class="flex flex-col md:flex-row gap-2 md:items-end">
+            <div>
+              <div class="text-xs text-gray-600 mb-1">From</div>
+              <input id="entryAiFrom" class="border rounded px-3 py-2" value="fr" />
+            </div>
+            <div>
+              <div class="text-xs text-gray-600 mb-1">To</div>
+              <input id="entryAiTo" class="border rounded px-3 py-2" readonly />
+            </div>
+            <div class="flex gap-2">
+              <button type="button" onclick="aiTranslateEntry()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">AI translate</button>
+            </div>
+          </div>
+        </div>
         <div class="flex justify-end gap-2">
           <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
           <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Save</button>
@@ -239,6 +255,12 @@
         const data = await res.json();
         const entries = data.entries || [];
 
+        window.__i18nEntriesByKey = {};
+        for (const e of entries) {
+          if (!e || !e.key) continue;
+          window.__i18nEntriesByKey[e.key] = e;
+        }
+
         document.getElementById('rows').innerHTML = entries.map(entryRow).join('');
         showToast('Entries loaded');
       } catch (e) {
@@ -254,6 +276,8 @@
       document.getElementById('entryFormat').value = 'text';
       document.getElementById('entryValue').value = '';
 
+      document.getElementById('entryAiTo').value = document.getElementById('locale').value;
+
       document.getElementById('entryKey').disabled = false;
       document.getElementById('entryLocale').disabled = false;
 
@@ -261,17 +285,46 @@
     }
 
     function createMissing(key) {
+      const inferred = window.__i18nEntriesByKey ? window.__i18nEntriesByKey[key] : null;
+
       document.getElementById('modalTitle').textContent = 'Create Entry';
       document.getElementById('entryId').value = '';
       document.getElementById('entryKey').value = key;
       document.getElementById('entryLocale').value = document.getElementById('locale').value;
-      document.getElementById('entryFormat').value = 'text';
-      document.getElementById('entryValue').value = '';
+      document.getElementById('entryFormat').value = (inferred && inferred.valueFormat) ? inferred.valueFormat : 'text';
+      document.getElementById('entryValue').value = (inferred && inferred.value) ? inferred.value : '';
+
+      document.getElementById('entryAiTo').value = document.getElementById('locale').value;
 
       document.getElementById('entryKey').disabled = true;
       document.getElementById('entryLocale').disabled = true;
 
       document.getElementById('modal').classList.remove('hidden');
+    }
+
+    async function aiTranslateEntry() {
+      try {
+        const fromLocale = document.getElementById('entryAiFrom').value;
+        const toLocale = document.getElementById('entryAiTo').value || document.getElementById('entryLocale').value;
+        const text = document.getElementById('entryValue').value;
+
+        const res = await fetch(`${API_BASE}/api/admin/i18n/ai/translate-text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fromLocale, toLocale, text })
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'AI translate failed');
+        }
+
+        const data = await res.json();
+        document.getElementById('entryValue').value = data.translatedText || '';
+        showToast('AI translation ready');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
     }
 
     async function editEntry(id) {
@@ -289,6 +342,8 @@
         document.getElementById('entryLocale').value = entry.locale;
         document.getElementById('entryFormat').value = entry.valueFormat || 'text';
         document.getElementById('entryValue').value = entry.value || '';
+
+        document.getElementById('entryAiTo').value = entry.locale;
 
         document.getElementById('entryKey').disabled = true;
         document.getElementById('entryLocale').disabled = true;

@@ -17,5 +17,6 @@ router.delete('/entries/:id', adminI18nController.deleteEntry);
 
 router.post('/ai/preview', adminI18nController.aiPreview);
 router.post('/ai/apply', adminI18nController.aiApply);
+router.post('/ai/translate-text', adminI18nController.aiTranslateText);
 
 module.exports = router;

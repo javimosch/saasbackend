@@ -514,3 +514,40 @@ exports.aiApply = async (req, res) => {
     res.status(500).json({ error: error.message || 'Failed to apply AI results' });
   }
 };
+
+exports.aiTranslateText = async (req, res) => {
+  try {
+    const { fromLocale, toLocale, text, model } = req.body;
+    if (!fromLocale || !toLocale) {
+      return res.status(400).json({ error: 'fromLocale and toLocale are required' });
+    }
+    if (typeof text !== 'string' || text.trim() === '') {
+      return res.status(400).json({ error: 'text is required' });
+    }
+
+    await ensureLocaleExists(toLocale, getBasicAuthActor(req));
+
+    const aiModel = model || (await getSettingValue('i18n.ai.model', 'google/gemini-2.5-flash-lite'));
+    const glossary = await getSettingValue('i18n.ai.glossary', '');
+
+    const client = await buildOpenRouterClient();
+    const prompt = buildAiPrompt({
+      glossary,
+      fromLocale,
+      toLocale,
+      key: '(admin.text)',
+      fromValue: text,
+    });
+
+    const resp = await client.chat.completions.create({
+      model: aiModel,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const translatedText = resp.choices?.[0]?.message?.content?.trim() || '';
+    res.json({ translatedText, model: aiModel });
+  } catch (error) {
+    console.error('Error translating text with AI:', error);
+    res.status(500).json({ error: error.message || 'Failed to translate text' });
+  }
+};
