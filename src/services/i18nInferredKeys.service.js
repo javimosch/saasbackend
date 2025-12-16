@@ -1,11 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+const ejs = require('ejs');
+const cheerio = require('cheerio');
 
 const cache = {
   timestamp: 0,
   ttlMs: 30000,
   signature: '',
   keys: [],
+  entries: {},
 };
 
 function toPosixPath(p) {
@@ -184,6 +187,75 @@ function extractKeysFromEjsSource(src, { includeTCalls }) {
   return Array.from(keys);
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildDefaultEjsLocals(filename) {
+  return {
+    title: '',
+    description: '',
+    canonicalUrl: '',
+    robots: '',
+    publicUrl: '',
+    assetVersion: '',
+    i18nInjectMeta: '0',
+    locale: 'fr',
+    defaultLocale: 'fr',
+    t: (key, vars, opts) => {
+      if (opts && typeof opts.defaultValue === 'string') return opts.defaultValue;
+      return key;
+    },
+    // Some templates expect an app root Vue mount; keep it minimal.
+    state: {},
+    filename,
+  };
+}
+
+function inferEntriesFromRenderedHtml(html) {
+  const $ = cheerio.load(String(html || ''), { decodeEntities: false });
+  const out = {};
+
+  $('[data-i18n-key]').each((_, el) => {
+    const key = $(el).attr('data-i18n-key');
+    if (!key) return;
+
+    const attrList = $(el).attr('data-i18n-attr');
+    const wantsHtml = $(el).is('[data-i18n-html]');
+
+    if (attrList) {
+      const attrs = String(attrList)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (attrs.length === 0) return;
+
+      // Store the first attribute value as the inferred default.
+      const a = attrs[0];
+      const v = $(el).attr(a);
+      if (typeof v !== 'string' || v.trim() === '') return;
+
+      out[key] = { value: v, valueFormat: 'text' };
+      return;
+    }
+
+    if (wantsHtml) {
+      const v = $(el).html();
+      if (typeof v !== 'string' || v.trim() === '') return;
+      out[key] = { value: v.trim(), valueFormat: 'html' };
+      return;
+    }
+
+    const txt = normalizeText($(el).text());
+    if (!txt) return;
+    out[key] = { value: txt, valueFormat: 'text' };
+  });
+
+  return out;
+}
+
 function scanOnce({ viewDirs, includeTCalls }) {
   const dirs = Array.isArray(viewDirs) && viewDirs.length > 0 ? viewDirs : getDefaultScanDirs();
 
@@ -204,11 +276,24 @@ function scanOnce({ viewDirs, includeTCalls }) {
   }
 
   const keys = new Set();
+  const inferredEntries = {};
   for (const f of files) {
     try {
       const src = fs.readFileSync(f.filePath, 'utf8');
       const extracted = extractKeysFromEjsSource(src, { includeTCalls });
       for (const k of extracted) keys.add(k);
+
+      // Render then parse to infer default values (best-effort)
+      try {
+        const rendered = ejs.render(src, buildDefaultEjsLocals(f.filePath), { filename: f.filePath });
+        const nextEntries = inferEntriesFromRenderedHtml(rendered);
+        for (const [k, v] of Object.entries(nextEntries)) {
+          // First value wins (deterministic due to file ordering by signature sort)
+          if (!inferredEntries[k]) inferredEntries[k] = v;
+        }
+      } catch {
+        // If render fails, we still keep keys extracted from the raw source.
+      }
     } catch {
       // ignore file read errors
     }
@@ -216,6 +301,7 @@ function scanOnce({ viewDirs, includeTCalls }) {
 
   const sorted = Array.from(keys).sort();
   cache.keys = sorted;
+  cache.entries = inferredEntries;
   cache.signature = signature;
   cache.timestamp = now;
 
@@ -229,13 +315,23 @@ function getInferredI18nKeys(options = {}) {
   });
 }
 
+function getInferredI18nEntries(options = {}) {
+  scanOnce({
+    viewDirs: options.viewDirs,
+    includeTCalls: options.includeTCalls === true,
+  });
+  return cache.entries || {};
+}
+
 function clearInferredI18nKeysCache() {
   cache.timestamp = 0;
   cache.signature = '';
   cache.keys = [];
+  cache.entries = {};
 }
 
 module.exports = {
   getInferredI18nKeys,
+  getInferredI18nEntries,
   clearInferredI18nKeysCache,
 };

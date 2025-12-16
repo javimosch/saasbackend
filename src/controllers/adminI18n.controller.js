@@ -2,7 +2,7 @@ const I18nLocale = require('../models/I18nLocale');
 const I18nEntry = require('../models/I18nEntry');
 
 const { clearI18nCache } = require('../services/i18n.service');
-const { getInferredI18nKeys } = require('../services/i18nInferredKeys.service');
+const { getInferredI18nKeys, getInferredI18nEntries } = require('../services/i18nInferredKeys.service');
 const { createAuditEvent, getBasicAuthActor } = require('../services/audit.service');
 const { getSettingValue } = require('../services/globalSettings.service');
 
@@ -156,6 +156,7 @@ exports.listEntries = async (req, res) => {
     const existingKeys = new Set(entries.map((e) => e.key));
 
     const inferredKeys = wantsInferred ? getInferredI18nKeys() : [];
+    const inferredEntriesMap = wantsInferred ? getInferredI18nEntries() : {};
     const filteredInferredKeys = search
       ? inferredKeys.filter((k) => String(k).toLowerCase().includes(String(search).toLowerCase()))
       : inferredKeys;
@@ -169,11 +170,12 @@ exports.listEntries = async (req, res) => {
       const missingKeys = allKeys.filter((k) => !existingKeys.has(k));
 
       const missingEntries = missingKeys.map((k) => ({
+        ...(wantsInferred && inferredEntriesMap[k] ? inferredEntriesMap[k] : null),
         _id: null,
         key: k,
         locale,
-        value: '',
-        valueFormat: 'text',
+        value: wantsInferred && inferredEntriesMap[k]?.value ? inferredEntriesMap[k].value : '',
+        valueFormat: wantsInferred && inferredEntriesMap[k]?.valueFormat ? inferredEntriesMap[k].valueFormat : 'text',
         source: wantsInferred && filteredInferredKeys.includes(k) ? 'inferred' : 'admin',
         seeded: false,
         edited: false,
@@ -192,8 +194,8 @@ exports.listEntries = async (req, res) => {
         _id: null,
         key: k,
         locale,
-        value: '',
-        valueFormat: 'text',
+        value: inferredEntriesMap[k]?.value ? inferredEntriesMap[k].value : '',
+        valueFormat: inferredEntriesMap[k]?.valueFormat ? inferredEntriesMap[k].valueFormat : 'text',
         source: 'inferred',
         seeded: false,
         edited: false,
