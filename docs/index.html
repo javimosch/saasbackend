@@ -3,161 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SaasBackend - Micro SaaS Template for Solo Entrepreneurs</title>
+    <title>SaasBackend</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.24/dist/full.min.css" rel="stylesheet" type="text/css" />
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <meta name="description" content="Micro SaaS template for solo-entrepreneurs with authentication, billing, user management, and admin features out of the box.">
+    <meta name="description" content="SaasBackend documentation portal">
 </head>
 <body>
-    <div id="app">
-        <!-- Hero Section -->
-        <div class="hero min-h-screen bg-gradient-to-r from-blue-500 to-purple-600">
-            <div class="hero-content text-center text-white">
-                <div class="max-w-4xl">
-                    <h1 class="mb-5 text-5xl font-bold">SaasBackend</h1>
-                    <p class="mb-5 text-xl">Micro SaaS template for solo-entrepreneurs</p>
-                    <p class="mb-8 text-lg opacity-90">Get your SaaS up and running quickly with authentication, Stripe billing, user management, and admin features built-in.</p>
-                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        <a href="documentation.html" class="btn btn-primary btn-lg">📚 Documentation</a>
-                        <a href="https://github.com/javimosch/saasbackend" target="_blank" class="btn btn-outline btn-lg text-white border-white hover:bg-white hover:text-blue-600">
-                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                            </svg>
-                            GitHub
-                        </a>
-                    </div>
+    <main class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+        <div class="max-w-5xl mx-auto px-6 py-16">
+            <header class="mb-12">
+                <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight">SaasBackend</h1>
+                <p class="mt-4 text-lg text-slate-300">
+                    Documentation portal for the SaasBackend backend template.
+                </p>
+                <div class="mt-8 flex flex-col sm:flex-row gap-3">
+                    <a href="documentation.html" class="inline-flex items-center justify-center rounded-lg bg-white text-slate-900 px-5 py-3 font-semibold hover:bg-slate-200">
+                        Open documentation
+                    </a>
+                    <a href="https://github.com/javimosch/saasbackend" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center rounded-lg border border-slate-500 px-5 py-3 font-semibold hover:bg-slate-800">
+                        GitHub
+                    </a>
                 </div>
-            </div>
+            </header>
+
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+                    <h2 class="text-xl font-bold">Feature docs</h2>
+                    <p class="mt-2 text-slate-300">
+                        The documentation page loads Markdown feature docs from <code class="text-slate-200">docs/features</code> and renders them in-browser.
+                    </p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+                    <h2 class="text-xl font-bold">GitHub Pages ready</h2>
+                    <p class="mt-2 text-slate-300">
+                        This site is static and works well on GitHub Pages (no server required).
+                    </p>
+                </div>
+            </section>
+
+            <footer class="mt-16 text-sm text-slate-400">
+                <p>
+                    © SaasBackend documentation
+                </p>
+            </footer>
         </div>
-
-        <!-- Features Section -->
-        <div class="py-20 bg-base-100">
-            <div class="container mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-12">Features</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="card bg-base-200 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title text-2xl">🔐 Authentication</h3>
-                            <p>JWT-based authentication with access and refresh tokens, password reset functionality, and secure user sessions.</p>
-                        </div>
-                    </div>
-                    <div class="card bg-base-200 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title text-2xl">💳 Stripe Integration</h3>
-                            <p>Complete billing system with Stripe integration, subscription management, billing portal, and webhook handling.</p>
-                        </div>
-                    </div>
-                    <div class="card bg-base-200 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title text-2xl">👥 User Management</h3>
-                            <p>User profiles, waiting lists, email notifications, activity logging, and comprehensive user administration.</p>
-                        </div>
-                    </div>
-                    <div class="card bg-base-200 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title text-2xl">⚙️ Admin Panel</h3>
-                            <p>Built-in admin interface with global settings, user management, billing overview, and system monitoring.</p>
-                        </div>
-                    </div>
-                    <div class="card bg-base-200 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title text-2xl">🔧 Middleware Mode</h3>
-                            <p>Flexible integration options - use as middleware in existing apps or as a standalone backend solution.</p>
-                        </div>
-                    </div>
-                    <div class="card bg-base-200 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title text-2xl">📧 Email Services</h3>
-                            <p>Email notifications, password reset emails, and comprehensive email logging with Resend integration.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Installation Section -->
-        <div class="py-20 bg-base-200">
-            <div class="container mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-12">Quick Start</h2>
-                <div class="max-w-4xl mx-auto">
-                    <div class="steps steps-vertical lg:steps-horizontal w-full">
-                        <div class="step step-primary">
-                            <div class="text-left">
-                                <h3 class="font-bold text-lg">Install</h3>
-                                <div class="mockup-code mt-2">
-                                    <pre><code>npm install saasbackend</code></pre>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="step step-primary">
-                            <div class="text-left">
-                                <h3 class="font-bold text-lg">Configure</h3>
-                                <p class="text-sm opacity-70">Set up your environment variables and MongoDB connection</p>
-                            </div>
-                        </div>
-                        <div class="step step-primary">
-                            <div class="text-left">
-                                <h3 class="font-bold text-lg">Integrate</h3>
-                                <p class="text-sm opacity-70">Use as middleware or standalone backend</p>
-                            </div>
-                        </div>
-                        <div class="step step-primary">
-                            <div class="text-left">
-                                <h3 class="font-bold text-lg">Launch</h3>
-                                <p class="text-sm opacity-70">Your SaaS is ready to go!</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="text-center mt-8">
-                        <a href="documentation.html" class="btn btn-primary btn-lg">Get Started with Documentation</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tech Stack Section -->
-        <div class="py-20 bg-base-100">
-            <div class="container mx-auto px-4">
-                <h2 class="text-4xl font-bold text-center mb-12">Built With</h2>
-                <div class="flex flex-wrap justify-center gap-6">
-                    <div class="badge badge-lg badge-primary">Node.js</div>
-                    <div class="badge badge-lg badge-secondary">Express.js</div>
-                    <div class="badge badge-lg badge-accent">MongoDB</div>
-                    <div class="badge badge-lg badge-info">Stripe</div>
-                    <div class="badge badge-lg badge-success">JWT</div>
-                    <div class="badge badge-lg badge-warning">Resend</div>
-                    <div class="badge badge-lg badge-error">Jest</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <footer class="footer footer-center p-10 bg-base-300 text-base-content rounded">
-            <div>
-                <div class="grid grid-flow-col gap-4">
-                    <a href="https://github.com/javimosch/saasbackend" target="_blank" class="link link-hover">GitHub</a>
-                    <a href="documentation.html" class="link link-hover">Documentation</a>
-                    <a href="https://www.npmjs.com/package/saasbackend" target="_blank" class="link link-hover">NPM</a>
-                </div>
-            </div>
-            <div>
-                <p>Copyright © 2024 - SaasBackend by Javier Leandro Arancibia</p>
-            </div>
-        </footer>
-    </div>
-
-    <script>
-        const { createApp } = Vue;
-        
-        createApp({
-            data() {
-                return {
-                    version: '1.1.0'
-                }
-            }
-        }).mount('#app');
-    </script>
+    </main>
 </body>
 </html>
