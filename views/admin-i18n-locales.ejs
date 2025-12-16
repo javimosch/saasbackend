@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>i18n Locales - Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .toast { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .fade-out { animation: fadeOut 0.3s ease-out forwards; }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="min-h-screen">
+    <div class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">i18n Locales</h1>
+            <p class="text-sm text-gray-600 mt-1">Manage locales and default locale</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <a href="/admin/i18n" class="text-blue-600 hover:text-blue-800">Entries</a>
+            <a href="/admin/test" class="text-blue-600 hover:text-blue-800">← Back</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center">
+          <button onclick="loadLocales()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Refresh</button>
+          <button onclick="showCreate()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">New Locale</button>
+        </div>
+
+        <div class="mt-6 overflow-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left border-b">
+                <th class="py-2 pr-4">Code</th>
+                <th class="py-2 pr-4">Name</th>
+                <th class="py-2 pr-4">Enabled</th>
+                <th class="py-2 pr-4">Default</th>
+                <th class="py-2 pr-4"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+  <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-xl shadow-lg rounded-md bg-white">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold" id="modalTitle">Locale</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+      </div>
+      <form onsubmit="saveLocale(event)">
+        <input type="hidden" id="mode" />
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Code</label>
+          <input id="code" class="w-full border rounded px-3 py-2" required />
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Name</label>
+          <input id="name" class="w-full border rounded px-3 py-2" required />
+        </div>
+        <div class="mb-4 flex items-center gap-2">
+          <input id="enabled" type="checkbox" checked />
+          <label for="enabled" class="text-sm">Enabled</label>
+        </div>
+        <div class="mb-4 flex items-center gap-2">
+          <input id="isDefault" type="checkbox" />
+          <label for="isDefault" class="text-sm">Set as default</label>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast px-6 py-4 rounded-lg shadow-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function localeRow(l) {
+      return `
+        <tr class="border-b">
+          <td class="py-2 pr-4 font-mono text-xs">${escapeHtml(l.code)}</td>
+          <td class="py-2 pr-4">${escapeHtml(l.name)}</td>
+          <td class="py-2 pr-4">${l.enabled ? 'yes' : 'no'}</td>
+          <td class="py-2 pr-4">${l.isDefault ? 'yes' : ''}</td>
+          <td class="py-2 pr-4 text-right">
+            <button onclick="editLocale('${escapeHtml(l.code)}')" class="text-blue-600 hover:text-blue-800">Edit</button>
+          </td>
+        </tr>
+      `;
+    }
+
+    async function loadLocales() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/i18n/locales`);
+        if (!res.ok) throw new Error('Failed to load locales');
+        const data = await res.json();
+        document.getElementById('rows').innerHTML = (data.locales || []).map(localeRow).join('');
+        showToast('Locales loaded');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    function showCreate() {
+      document.getElementById('modalTitle').textContent = 'Create Locale';
+      document.getElementById('mode').value = 'create';
+      document.getElementById('code').value = '';
+      document.getElementById('name').value = '';
+      document.getElementById('enabled').checked = true;
+      document.getElementById('isDefault').checked = false;
+      document.getElementById('code').disabled = false;
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    async function editLocale(code) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/i18n/locales`);
+        if (!res.ok) throw new Error('Failed to load locale');
+        const data = await res.json();
+        const l = (data.locales || []).find(x => x.code === code);
+        if (!l) throw new Error('Locale not found');
+
+        document.getElementById('modalTitle').textContent = 'Edit Locale';
+        document.getElementById('mode').value = 'edit';
+        document.getElementById('code').value = l.code;
+        document.getElementById('name').value = l.name;
+        document.getElementById('enabled').checked = !!l.enabled;
+        document.getElementById('isDefault').checked = !!l.isDefault;
+        document.getElementById('code').disabled = true;
+
+        document.getElementById('modal').classList.remove('hidden');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden');
+    }
+
+    async function saveLocale(event) {
+      event.preventDefault();
+      try {
+        const mode = document.getElementById('mode').value;
+        const code = document.getElementById('code').value;
+        const name = document.getElementById('name').value;
+        const enabled = document.getElementById('enabled').checked;
+        const isDefault = document.getElementById('isDefault').checked;
+
+        let res;
+        if (mode === 'create') {
+          res = await fetch(`${API_BASE}/api/admin/i18n/locales`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, name, enabled, isDefault })
+          });
+        } else {
+          res = await fetch(`${API_BASE}/api/admin/i18n/locales/${encodeURIComponent(code)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, enabled, isDefault })
+          });
+        }
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Save failed');
+        }
+
+        closeModal();
+        await loadLocales();
+        showToast('Saved');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    loadLocales();
+  </script>
+</body>
+</html>

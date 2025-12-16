@@ -95,7 +95,9 @@ function startServer(options = {}) {
   app.use("/api/billing", require("./src/routes/billing.routes"));
   app.use("/api/admin", require("./src/routes/admin.routes"));
   app.use("/api/admin/settings", require("./src/routes/globalSettings.routes"));
+  app.use("/api/admin/i18n", require("./src/routes/adminI18n.routes"));
   app.use("/api/settings", require("./src/routes/globalSettings.routes"));
+  app.use("/api/i18n", require("./src/routes/i18n.routes"));
   app.use("/api", require("./src/routes/notifications.routes"));
   app.use("/api/user", require("./src/routes/user.routes"));
   app.use("/api/orgs", require("./src/routes/org.routes"));
@@ -109,6 +111,14 @@ function startServer(options = {}) {
   // Admin global settings page (protected by basic auth)
   app.get("/admin/global-settings", basicAuth, (req, res) => {
     res.render("admin-global-settings");
+  });
+
+  // Admin i18n pages (protected by basic auth)
+  app.get("/admin/i18n", basicAuth, (req, res) => {
+    res.render("admin-i18n");
+  });
+  app.get("/admin/i18n/locales", basicAuth, (req, res) => {
+    res.render("admin-i18n-locales");
   });
 
   // Health check
@@ -226,6 +236,9 @@ module.exports = {
   services: {
     email: require("./src/services/email.service"),
     storage: require("./src/services/storage"),
+    i18n: require("./src/services/i18n.service"),
+    audit: require("./src/services/audit.service"),
+    globalSettings: require("./src/services/globalSettings.service"),
   },
   models: {
     EmailLog: require("./src/models/EmailLog"),
@@ -234,9 +247,13 @@ module.exports = {
     Organization: require("./src/models/Organization"),
     OrganizationMember: require("./src/models/OrganizationMember"),
     Invite: require("./src/models/Invite"),
+    I18nLocale: require("./src/models/I18nLocale"),
+    I18nEntry: require("./src/models/I18nEntry"),
+    AuditEvent: require("./src/models/AuditEvent"),
   },
   helpers: {
     auth: require("./src/middleware/auth"),
     org: require("./src/middleware/org"),
+    i18n: require("./src/services/i18n.service"),
   },
 };

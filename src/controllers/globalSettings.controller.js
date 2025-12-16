@@ -1,10 +1,20 @@
 const GlobalSetting = require('../models/GlobalSetting');
+const { encryptString, decryptString } = require('../utils/encryption');
+
+const redactSetting = (setting) => {
+  if (!setting) return setting;
+  if (setting.type !== 'encrypted') return setting;
+  return {
+    ...setting,
+    value: '********',
+  };
+};
 
 // GET /api/admin/settings - Get all global settings
 exports.getAllSettings = async (req, res) => {
   try {
     const settings = await GlobalSetting.find().sort({ key: 1 }).lean();
-    res.json(settings);
+    res.json(settings.map(redactSetting));
   } catch (error) {
     console.error('Error fetching global settings:', error);
     res.status(500).json({ error: 'Failed to fetch global settings' });
@@ -24,7 +34,7 @@ exports.getSetting = async (req, res) => {
       });
     }
     
-    res.json(setting);
+    res.json(redactSetting(setting));
   } catch (error) {
     console.error('Error fetching setting:', error);
     res.status(500).json({ error: 'Failed to fetch setting' });
@@ -72,13 +82,18 @@ exports.updateSetting = async (req, res) => {
       }
     }
     
-    setting.value = value;
+    if (setting.type === 'encrypted') {
+      const encryptedPayload = encryptString(value);
+      setting.value = JSON.stringify(encryptedPayload);
+    } else {
+      setting.value = value;
+    }
     await setting.save();
     
     // Clear cache if you implement one
     // cache.del(`setting:${key}`);
     
-    res.json(setting);
+    res.json(redactSetting(setting.toObject()));
   } catch (error) {
     console.error('Error updating setting:', error);
     res.status(500).json({ error: 'Failed to update setting' });
@@ -103,17 +118,24 @@ exports.createSetting = async (req, res) => {
         error: `Setting with key '${key}' already exists.` 
       });
     }
+
+    if (type === 'encrypted' && isPublic) {
+      return res.status(400).json({ error: 'Encrypted settings cannot be public' });
+    }
+
+    const storedValue =
+      type === 'encrypted' ? JSON.stringify(encryptString(value)) : value;
     
     const setting = await GlobalSetting.create({
       key,
-      value,
+      value: storedValue,
       type,
       description,
       templateVariables: templateVariables || [],
       public: isPublic || false
     });
     
-    res.status(201).json(setting);
+    res.status(201).json(redactSetting(setting.toObject()));
   } catch (error) {
     console.error('Error creating setting:', error);
     res.status(500).json({ error: 'Failed to create setting' });
@@ -147,7 +169,16 @@ exports.deleteSetting = async (req, res) => {
 exports.getSettingValue = async (key, defaultValue = null) => {
   try {
     const setting = await GlobalSetting.findOne({ key }).lean();
-    return setting ? setting.value : defaultValue;
+    if (!setting) return defaultValue;
+    if (setting.type !== 'encrypted') return setting.value;
+
+    try {
+      const payload = JSON.parse(setting.value);
+      return decryptString(payload);
+    } catch (e) {
+      console.error(`Error decrypting setting ${key}:`, e);
+      return defaultValue;
+    }
   } catch (error) {
     console.error(`Error getting setting ${key}:`, error);
     return defaultValue;

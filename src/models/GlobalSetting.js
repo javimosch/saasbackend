@@ -14,7 +14,7 @@ const globalSettingSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['string', 'html', 'boolean', 'json', 'number'],
+    enum: ['string', 'html', 'boolean', 'json', 'number', 'encrypted'],
     default: 'string'
   },
   description: {

@@ -128,7 +128,9 @@ function createMiddleware(options = {}) {
   router.use("/api/waiting-list", require("./routes/waitingList.routes"));
   router.use("/api/admin", require("./routes/admin.routes"));
   router.use("/api/admin/settings", require("./routes/globalSettings.routes"));
+  router.use("/api/admin/i18n", require("./routes/adminI18n.routes"));
   router.use("/api/settings", require("./routes/globalSettings.routes"));
+  router.use("/api/i18n", require("./routes/i18n.routes"));
   router.use("/api", require("./routes/notifications.routes"));
   router.use("/api/user", require("./routes/user.routes"));
   router.use("/api/orgs", require("./routes/org.routes"));
@@ -137,6 +139,45 @@ function createMiddleware(options = {}) {
   // Admin test page (protected by basic auth) - render manually to avoid view engine conflicts
   router.get("/admin/test", basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-test.ejs");
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(template, { baseUrl: req.baseUrl });
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  router.get("/admin/i18n", basicAuth, (req, res) => {
+    const templatePath = path.join(__dirname, "..", "views", "admin-i18n.ejs");
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(template, { baseUrl: req.baseUrl });
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  router.get("/admin/i18n/locales", basicAuth, (req, res) => {
+    const templatePath = path.join(
+      __dirname,
+      "..",
+      "views",
+      "admin-i18n-locales.ejs",
+    );
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
         console.error("Error reading template:", err);
