@@ -5,6 +5,8 @@ const { loadOrgContext, requireOrgMember, requireOrgRoleAtLeast, requireOrgRole 
 const orgController = require('../controllers/org.controller');
 const inviteController = require('../controllers/invite.controller');
 
+router.get('/public', orgController.listPublicOrgs);
+
 router.get('/', authenticate, orgController.listOrgs);
 router.post('/', authenticate, orgController.createOrg);
 

@@ -32,6 +32,29 @@ exports.listOrgs = async (req, res) => {
   }
 };
 
+exports.listPublicOrgs = async (req, res) => {
+  try {
+    const orgs = await Organization.find({ status: 'active' })
+      .select('name slug description allowPublicJoin createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      orgs: orgs.map((o) => ({
+        _id: o._id,
+        name: o.name,
+        slug: o.slug,
+        description: o.description,
+        allowPublicJoin: o.allowPublicJoin,
+        createdAt: o.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error listing public orgs:', error);
+    res.status(500).json({ error: 'Failed to list organizations' });
+  }
+};
+
 exports.createOrg = async (req, res) => {
   try {
     const { name, description, slug: customSlug, allowPublicJoin } = req.body;
