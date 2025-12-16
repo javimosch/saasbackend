@@ -94,12 +94,15 @@ function startServer(options = {}) {
   // API Routes
   app.use("/api/auth", require("./src/routes/auth.routes"));
   app.use("/api/billing", require("./src/routes/billing.routes"));
-  app.use("/api/admin", require("./src/routes/admin.routes"));
   app.use(
     "/api/admin/waiting-list",
     require("./src/routes/waitingListAdmin.routes"),
   );
   app.use("/api/admin/orgs", require("./src/routes/orgAdmin.routes"));
+  app.use("/api/admin/users", require("./src/routes/userAdmin.routes"));
+  app.use("/api/admin/notifications", require("./src/routes/notificationAdmin.routes"));
+  app.use("/api/admin/stripe", require("./src/routes/stripeAdmin.routes"));
+  app.use("/api/admin", require("./src/routes/admin.routes"));
   app.use("/api/admin/settings", require("./src/routes/globalSettings.routes"));
   app.use("/api/admin/i18n", require("./src/routes/adminI18n.routes"));
   app.use("/api/settings", require("./src/routes/globalSettings.routes"));
@@ -127,6 +130,21 @@ function startServer(options = {}) {
   // Admin organizations page (protected by basic auth)
   app.get("/admin/organizations", basicAuth, (req, res) => {
     res.render("admin-organizations", { baseUrl: "", endpointRegistry });
+  });
+
+  // Admin users page (protected by basic auth)
+  app.get("/admin/users", basicAuth, (req, res) => {
+    res.render("admin-users", { baseUrl: "", endpointRegistry });
+  });
+
+  // Admin notifications page (protected by basic auth)
+  app.get("/admin/notifications", basicAuth, (req, res) => {
+    res.render("admin-notifications", { baseUrl: "", endpointRegistry });
+  });
+
+  // Admin Stripe pricing page (protected by basic auth)
+  app.get("/admin/stripe-pricing", basicAuth, (req, res) => {
+    res.render("admin-stripe-pricing", { baseUrl: "", endpointRegistry });
   });
 
   // Admin metrics page (protected by basic auth)

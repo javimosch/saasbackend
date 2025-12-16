@@ -129,13 +129,16 @@ function createMiddleware(options = {}) {
   router.use("/api/waiting-list", require("./routes/waitingList.routes"));
   router.use("/api/metrics", require("./routes/metrics.routes"));
   router.use("/api/forms", require("./routes/forms.routes"));
-  router.use("/api/admin", require("./routes/admin.routes"));
   router.use("/api/admin/forms", require("./routes/formsAdmin.routes"));
   router.use(
     "/api/admin/waiting-list",
     require("./routes/waitingListAdmin.routes"),
   );
   router.use("/api/admin/orgs", require("./routes/orgAdmin.routes"));
+  router.use("/api/admin/users", require("./routes/userAdmin.routes"));
+  router.use("/api/admin/notifications", require("./routes/notificationAdmin.routes"));
+  router.use("/api/admin/stripe", require("./routes/stripeAdmin.routes"));
+  router.use("/api/admin", require("./routes/admin.routes"));
   router.use("/api/admin/settings", require("./routes/globalSettings.routes"));
   router.use("/api/admin/i18n", require("./routes/adminI18n.routes"));
   router.use("/api/settings", require("./routes/globalSettings.routes"));
@@ -271,6 +274,102 @@ function createMiddleware(options = {}) {
       "..",
       "views",
       "admin-organizations.ejs",
+    );
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(
+          template,
+          {
+            baseUrl: req.baseUrl,
+            endpointRegistry,
+          },
+          {
+            filename: templatePath,
+          },
+        );
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  // Admin users page (protected by basic auth)
+  router.get("/admin/users", basicAuth, (req, res) => {
+    const templatePath = path.join(
+      __dirname,
+      "..",
+      "views",
+      "admin-users.ejs",
+    );
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(
+          template,
+          {
+            baseUrl: req.baseUrl,
+            endpointRegistry,
+          },
+          {
+            filename: templatePath,
+          },
+        );
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  // Admin notifications page (protected by basic auth)
+  router.get("/admin/notifications", basicAuth, (req, res) => {
+    const templatePath = path.join(
+      __dirname,
+      "..",
+      "views",
+      "admin-notifications.ejs",
+    );
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(
+          template,
+          {
+            baseUrl: req.baseUrl,
+            endpointRegistry,
+          },
+          {
+            filename: templatePath,
+          },
+        );
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  // Admin Stripe pricing page (protected by basic auth)
+  router.get("/admin/stripe-pricing", basicAuth, (req, res) => {
+    const templatePath = path.join(
+      __dirname,
+      "..",
+      "views",
+      "admin-stripe-pricing.ejs",
     );
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {

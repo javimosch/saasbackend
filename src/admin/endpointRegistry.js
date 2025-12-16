@@ -578,6 +578,161 @@ const endpointRegistry = [
       },
     ],
   },
+  {
+    id: "admin-users",
+    title: "Admin Users",
+    endpoints: [
+      {
+        id: "admin-users-stats",
+        method: "GET",
+        path: "/api/admin/users/stats",
+        auth: "basic",
+      },
+      {
+        id: "admin-users-list",
+        method: "GET",
+        path: "/api/admin/users",
+        auth: "basic",
+      },
+      {
+        id: "admin-users-get",
+        method: "GET",
+        path: "/api/admin/users/:id",
+        auth: "basic",
+      },
+      {
+        id: "admin-users-update",
+        method: "PATCH",
+        path: "/api/admin/users/:id",
+        auth: "basic",
+        bodyExample: { name: "Updated Name", role: "user" },
+      },
+      {
+        id: "admin-users-disable",
+        method: "POST",
+        path: "/api/admin/users/:id/disable",
+        auth: "basic",
+      },
+      {
+        id: "admin-users-enable",
+        method: "POST",
+        path: "/api/admin/users/:id/enable",
+        auth: "basic",
+      },
+    ],
+  },
+  {
+    id: "admin-notifications",
+    title: "Admin Notifications",
+    endpoints: [
+      {
+        id: "admin-notifications-stats",
+        method: "GET",
+        path: "/api/admin/notifications/stats",
+        auth: "basic",
+      },
+      {
+        id: "admin-notifications-list",
+        method: "GET",
+        path: "/api/admin/notifications",
+        auth: "basic",
+      },
+      {
+        id: "admin-notifications-send",
+        method: "POST",
+        path: "/api/admin/notifications/send",
+        auth: "basic",
+        bodyExample: { userIds: ["userId"], type: "info", title: "Title", message: "Message", channel: "in_app" },
+      },
+      {
+        id: "admin-notifications-broadcast",
+        method: "POST",
+        path: "/api/admin/notifications/broadcast",
+        auth: "basic",
+        bodyExample: { type: "info", title: "Title", message: "Message", channel: "both" },
+      },
+      {
+        id: "admin-notifications-delete",
+        method: "DELETE",
+        path: "/api/admin/notifications/:id",
+        auth: "basic",
+      },
+      {
+        id: "admin-notifications-retry-email",
+        method: "POST",
+        path: "/api/admin/notifications/:id/retry-email",
+        auth: "basic",
+      },
+    ],
+  },
+  {
+    id: "admin-stripe",
+    title: "Admin Stripe Pricing",
+    endpoints: [
+      {
+        id: "admin-stripe-status",
+        method: "GET",
+        path: "/api/admin/stripe/status",
+        auth: "basic",
+      },
+      {
+        id: "admin-stripe-catalog-list",
+        method: "GET",
+        path: "/api/admin/stripe/catalog",
+        auth: "basic",
+      },
+      {
+        id: "admin-stripe-catalog-get",
+        method: "GET",
+        path: "/api/admin/stripe/catalog/:id",
+        auth: "basic",
+      },
+      {
+        id: "admin-stripe-catalog-upsert",
+        method: "POST",
+        path: "/api/admin/stripe/catalog/upsert",
+        auth: "basic",
+        bodyExample: { productName: "Pro Plan", planKey: "pro_monthly", displayName: "Pro (Monthly)", billingType: "subscription", currency: "usd", unitAmount: 1999, interval: "month" },
+      },
+      {
+        id: "admin-stripe-catalog-import",
+        method: "POST",
+        path: "/api/admin/stripe/catalog/import",
+        auth: "basic",
+        bodyExample: { stripePriceId: "price_...", planKey: "pro", displayName: "Pro Plan" },
+      },
+      {
+        id: "admin-stripe-catalog-deactivate",
+        method: "POST",
+        path: "/api/admin/stripe/catalog/:id/deactivate",
+        auth: "basic",
+      },
+      {
+        id: "admin-stripe-catalog-activate",
+        method: "POST",
+        path: "/api/admin/stripe/catalog/:id/activate",
+        auth: "basic",
+      },
+      {
+        id: "admin-stripe-catalog-delete",
+        method: "DELETE",
+        path: "/api/admin/stripe/catalog/:id",
+        auth: "basic",
+      },
+      {
+        id: "admin-stripe-products",
+        method: "GET",
+        path: "/api/admin/stripe/products",
+        auth: "basic",
+      },
+      {
+        id: "admin-stripe-prices",
+        method: "GET",
+        path: "/api/admin/stripe/prices",
+        auth: "basic",
+      },
+    ],
+  },
 ];
 
 module.exports = endpointRegistry;
