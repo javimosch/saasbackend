@@ -20,16 +20,28 @@
       from { opacity: 1; }
       to { opacity: 0; }
     }
+
+    .sidebar-group-content[data-collapsed="true"] {
+      display: none;
+    }
+    .sidebar-group-content {
+      padding-left: 1rem;
+    }
+    .sidebar-group-header {
+      cursor: pointer;
+    }
+    .sidebar-group-header .caret {
+      transition: transform 0.2s ease-out;
+    }
+    .sidebar-group-header .caret.down {
+      transform: rotate(90deg);
+    }
   </style>
 </head>
 <body class="bg-gray-100">
   <div class="flex h-screen">
     <!-- Vertical Toolbar -->
-    <div class="w-80 bg-gray-800 text-white p-4 overflow-y-auto">
-      <h1 class="text-2xl font-bold mb-6">API Testing</h1>
-      
-      <div class="space-y-2" id="endpoint-sidebar"></div>
-    </div>
+    <%- include('partials/admin-test-sidebar') %>
 
     <!-- Content Area -->
     <div class="flex-1 p-8 overflow-y-auto">
@@ -118,14 +130,39 @@
 
       sidebar.innerHTML = '';
 
+      const searchEl = document.getElementById('sidebar-search');
+      const searchValue = (searchEl?.value || '').trim().toLowerCase();
+
       ENDPOINT_REGISTRY.forEach((group) => {
         const groupEl = document.createElement('div');
         groupEl.className = 'mb-4';
 
-        const title = document.createElement('h2');
-        title.className = 'text-sm font-semibold text-gray-400 mb-2';
-        title.textContent = group.title;
-        groupEl.appendChild(title);
+        const headerBtn = document.createElement('button');
+        headerBtn.type = 'button';
+        headerBtn.className = 'w-full flex items-center justify-between text-sm font-semibold text-gray-400 mb-2 px-2 py-1 rounded hover:bg-gray-700 transition sidebar-group-header';
+
+        const headerTitle = document.createElement('span');
+        headerTitle.textContent = group.title;
+        headerBtn.appendChild(headerTitle);
+
+        const caret = document.createElement('span');
+        caret.className = 'text-gray-500 caret';
+        caret.textContent = '▸';
+        headerBtn.appendChild(caret);
+
+        const groupContent = document.createElement('div');
+        groupContent.className = 'sidebar-group-content space-y-1';
+        groupContent.dataset.groupId = group.id;
+        groupContent.dataset.collapsed = 'true';
+
+        headerBtn.onclick = () => {
+          const collapsed = groupContent.dataset.collapsed === 'true';
+          groupContent.dataset.collapsed = collapsed ? 'false' : 'true';
+          caret.className = collapsed ? 'text-gray-500 caret down' : 'text-gray-500 caret';
+        };
+
+        groupEl.appendChild(headerBtn);
+        groupEl.appendChild(groupContent);
 
         const dedicatedPages = {
           'global-settings': { href: '/admin/global-settings', label: '🔧 Settings Manager UI →' },
@@ -140,16 +177,31 @@
           link.href = dedicatedPages[group.id].href;
           link.className = 'block w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition text-green-400';
           link.textContent = dedicatedPages[group.id].label;
-          groupEl.appendChild(link);
+          groupContent.appendChild(link);
         }
 
+        const groupSearchText = `${group.title} ${(dedicatedPages[group.id]?.label || '')}`.toLowerCase();
+        let groupMatches = !searchValue || groupSearchText.includes(searchValue);
+
         group.endpoints.forEach((ep) => {
+          const label = `${ep.method} ${ep.path}`;
+          const matches = !searchValue || label.toLowerCase().includes(searchValue) || groupSearchText.includes(searchValue);
+          if (!matches) return;
+          groupMatches = true;
+
           const btn = document.createElement('button');
           btn.className = 'w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition';
-          btn.textContent = `${ep.method} ${ep.path}`;
+          btn.textContent = label;
           btn.onclick = () => showEndpoint(group.id, ep.id);
-          groupEl.appendChild(btn);
+          groupContent.appendChild(btn);
         });
+
+        if (!groupMatches) return;
+
+        if (searchValue) {
+          groupContent.dataset.collapsed = 'false';
+          caret.className = 'text-gray-500 caret down';
+        }
 
         sidebar.appendChild(groupEl);
       });
@@ -226,6 +278,11 @@
 
         makeRequest(resolvedPath, ep.method, body, requiresJWT);
       };
+    }
+
+    const searchEl = document.getElementById('sidebar-search');
+    if (searchEl) {
+      searchEl.addEventListener('input', () => renderSidebar());
     }
 
     renderSidebar();
