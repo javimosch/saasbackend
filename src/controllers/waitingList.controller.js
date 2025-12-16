@@ -123,3 +123,45 @@ exports.getStats = async (req, res) => {
     });
   }
 };
+
+// Admin list waiting list entries (includes email)
+exports.adminList = async (req, res) => {
+  try {
+    const {
+      status,
+      type,
+      email,
+      limit = 50,
+      offset = 0,
+    } = req.query;
+
+    const query = {};
+    if (status) query.status = String(status);
+    if (type) query.type = String(type);
+    if (email) query.email = String(email).trim().toLowerCase();
+
+    const parsedLimit = Math.min(500, Math.max(1, parseInt(limit, 10) || 50));
+    const parsedOffset = Math.max(0, parseInt(offset, 10) || 0);
+
+    const entries = await WaitingList.find(query)
+      .sort({ createdAt: -1 })
+      .limit(parsedLimit)
+      .skip(parsedOffset)
+      .select('email type status referralSource createdAt updatedAt')
+      .lean();
+
+    const total = await WaitingList.countDocuments(query);
+
+    return res.json({
+      entries,
+      pagination: {
+        total,
+        limit: parsedLimit,
+        offset: parsedOffset,
+      },
+    });
+  } catch (error) {
+    console.error('Waiting list admin list error:', error);
+    return res.status(500).json({ error: 'Failed to list entries' });
+  }
+};

@@ -95,6 +95,10 @@ function startServer(options = {}) {
   app.use("/api/auth", require("./src/routes/auth.routes"));
   app.use("/api/billing", require("./src/routes/billing.routes"));
   app.use("/api/admin", require("./src/routes/admin.routes"));
+  app.use(
+    "/api/admin/waiting-list",
+    require("./src/routes/waitingListAdmin.routes"),
+  );
   app.use("/api/admin/settings", require("./src/routes/globalSettings.routes"));
   app.use("/api/admin/i18n", require("./src/routes/adminI18n.routes"));
   app.use("/api/settings", require("./src/routes/globalSettings.routes"));

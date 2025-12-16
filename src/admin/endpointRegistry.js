@@ -494,6 +494,12 @@ const endpointRegistry = [
         path: "/api/waiting-list/stats",
         auth: "none",
       },
+      {
+        id: "waiting-list-admin-list",
+        method: "GET",
+        path: "/api/admin/waiting-list",
+        auth: "basic",
+      },
     ],
   },
   {
