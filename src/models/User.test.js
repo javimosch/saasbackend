@@ -96,17 +96,18 @@ describe('User Model', () => {
       expect(validationError.errors.subscriptionStatus).toBeDefined();
     });
 
-    test('should validate current plan enum', () => {
+    test('should accept any string for current plan (free text)', () => {
       const userData = {
         email: 'test@example.com',
         password: 'hashedPassword123',
-        currentPlan: 'invalid-plan'
+        currentPlan: 'custom-enterprise-plan'
       };
 
       const user = new User(userData);
       const validationError = user.validateSync();
 
-      expect(validationError.errors.currentPlan).toBeDefined();
+      expect(validationError).toBeUndefined();
+      expect(user.currentPlan).toBe('custom-enterprise-plan');
     });
   });
 
