@@ -579,6 +579,69 @@ const endpointRegistry = [
     ],
   },
   {
+    id: "feature-flags",
+    title: "Feature Flags",
+    endpoints: [
+      {
+        id: "feature-flags-public",
+        method: "GET",
+        path: "/api/feature-flags/public",
+        auth: "none",
+      },
+      {
+        id: "feature-flags-evaluated",
+        method: "GET",
+        path: "/api/feature-flags",
+        auth: "jwt",
+      },
+      {
+        id: "admin-feature-flags-list",
+        method: "GET",
+        path: "/api/admin/feature-flags",
+        auth: "basic",
+      },
+      {
+        id: "admin-feature-flags-get",
+        method: "GET",
+        path: "/api/admin/feature-flags/:key",
+        auth: "basic",
+      },
+      {
+        id: "admin-feature-flags-create",
+        method: "POST",
+        path: "/api/admin/feature-flags",
+        auth: "basic",
+        bodyExample: {
+          key: "new_checkout",
+          description: "Enable new checkout",
+          enabled: false,
+          rolloutPercentage: 10,
+          allowListUserIds: [],
+          allowListOrgIds: [],
+          denyListUserIds: [],
+          denyListOrgIds: [],
+          payload: { variant: "A" },
+        },
+      },
+      {
+        id: "admin-feature-flags-update",
+        method: "PUT",
+        path: "/api/admin/feature-flags/:key",
+        auth: "basic",
+        bodyExample: {
+          enabled: true,
+          rolloutPercentage: 100,
+        },
+      },
+      {
+        id: "admin-feature-flags-delete",
+        method: "DELETE",
+        path: "/api/admin/feature-flags/:key",
+        auth: "basic",
+      },
+    ],
+  },
+  {
     id: "admin-users",
     title: "Admin Users",
     endpoints: [

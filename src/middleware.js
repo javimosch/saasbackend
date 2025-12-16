@@ -6,6 +6,7 @@ const fs = require("fs");
 const ejs = require("ejs");
 const { basicAuth } = require("./middleware/auth");
 const endpointRegistry = require("./admin/endpointRegistry");
+const { createFeatureFlagsEjsMiddleware } = require("./services/featureFlags.service");
 
 /**
  * Creates and configures the SaaS backend middleware
@@ -123,6 +124,9 @@ function createMiddleware(options = {}) {
     express.static(path.join(__dirname, "..", "public")),
   );
 
+  // EJS locals: feature flags for server-rendered pages
+  router.use(createFeatureFlagsEjsMiddleware());
+
   // API Routes
   router.use("/api/auth", require("./routes/auth.routes"));
   router.use("/api/billing", require("./routes/billing.routes"));
@@ -140,8 +144,13 @@ function createMiddleware(options = {}) {
   router.use("/api/admin/stripe", require("./routes/stripeAdmin.routes"));
   router.use("/api/admin", require("./routes/admin.routes"));
   router.use("/api/admin/settings", require("./routes/globalSettings.routes"));
+  router.use(
+    "/api/admin/feature-flags",
+    require("./routes/adminFeatureFlags.routes"),
+  );
   router.use("/api/admin/i18n", require("./routes/adminI18n.routes"));
   router.use("/api/settings", require("./routes/globalSettings.routes"));
+  router.use("/api/feature-flags", require("./routes/featureFlags.routes"));
   router.use("/api/i18n", require("./routes/i18n.routes"));
   router.use("/api", require("./routes/notifications.routes"));
   router.use("/api/user", require("./routes/user.routes"));
@@ -217,6 +226,38 @@ function createMiddleware(options = {}) {
   // Admin forms page (protected by basic auth)
   router.get("/admin/forms", basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-forms.ejs");
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(
+          template,
+          {
+            baseUrl: req.baseUrl,
+            endpointRegistry,
+          },
+          {
+            filename: templatePath,
+          },
+        );
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  // Admin feature flags page (protected by basic auth)
+  router.get("/admin/feature-flags", basicAuth, (req, res) => {
+    const templatePath = path.join(
+      __dirname,
+      "..",
+      "views",
+      "admin-feature-flags.ejs",
+    );
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
         console.error("Error reading template:", err);

@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const { basicAuth } = require("./src/middleware/auth");
 const endpointRegistry = require("./src/admin/endpointRegistry");
+const { createFeatureFlagsEjsMiddleware } = require("./src/services/featureFlags.service");
 
 /**
  * Creates and starts a standalone SaaS backend server
@@ -91,6 +92,9 @@ function startServer(options = {}) {
   // Serve static files
   app.use(express.static(path.join(__dirname, "public")));
 
+  // EJS locals: feature flags for server-rendered pages
+  app.use(createFeatureFlagsEjsMiddleware());
+
   // API Routes
   app.use("/api/auth", require("./src/routes/auth.routes"));
   app.use("/api/billing", require("./src/routes/billing.routes"));
@@ -104,8 +108,13 @@ function startServer(options = {}) {
   app.use("/api/admin/stripe", require("./src/routes/stripeAdmin.routes"));
   app.use("/api/admin", require("./src/routes/admin.routes"));
   app.use("/api/admin/settings", require("./src/routes/globalSettings.routes"));
+  app.use(
+    "/api/admin/feature-flags",
+    require("./src/routes/adminFeatureFlags.routes"),
+  );
   app.use("/api/admin/i18n", require("./src/routes/adminI18n.routes"));
   app.use("/api/settings", require("./src/routes/globalSettings.routes"));
+  app.use("/api/feature-flags", require("./src/routes/featureFlags.routes"));
   app.use("/api/i18n", require("./src/routes/i18n.routes"));
   app.use("/api", require("./src/routes/notifications.routes"));
   app.use("/api/user", require("./src/routes/user.routes"));
@@ -150,6 +159,11 @@ function startServer(options = {}) {
   // Admin metrics page (protected by basic auth)
   app.get("/admin/metrics", basicAuth, (req, res) => {
     res.render("admin-metrics", { baseUrl: "", endpointRegistry });
+  });
+
+  // Admin feature flags page (protected by basic auth)
+  app.get("/admin/feature-flags", basicAuth, (req, res) => {
+    res.render("admin-feature-flags", { baseUrl: "", endpointRegistry });
   });
 
   // Admin global settings page (protected by basic auth)

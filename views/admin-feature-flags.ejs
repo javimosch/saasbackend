@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Flags - Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .toast {
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="min-h-screen">
+    <div class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Feature Flags</h1>
+            <p class="text-sm text-gray-600 mt-1">Manage FEATURE_FLAG.* definitions (stored as Global Settings JSON)</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <a href="/admin/test" class="text-blue-600 hover:text-blue-800">← Back to API Test</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-6 flex justify-between items-center">
+        <button onclick="loadFlags()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Refresh
+        </button>
+        <button onclick="showCreateModal()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          New Flag
+        </button>
+      </div>
+
+      <div id="flags-container" class="grid grid-cols-1 gap-6">
+        <div class="text-center py-12">
+          <p class="text-gray-600">Loading flags...</p>
+        </div>
+      </div>
+
+      <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-4">
+        <h3 class="font-semibold text-blue-900 mb-2">📋 Storage</h3>
+        <div class="text-sm text-blue-800 space-y-2">
+          <p>Flags are stored as Global Settings with keys: <code class="bg-blue-100 px-1 rounded">FEATURE_FLAG.&lt;key&gt;</code> and <code class="bg-blue-100 px-1 rounded">type=json</code>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+  <div id="edit-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold" id="modal-title">Edit Flag</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <form id="edit-form" onsubmit="handleSubmit(event)">
+        <input type="hidden" id="edit-mode">
+        <input type="hidden" id="edit-key">
+
+        <div class="mb-4" id="key-input-container">
+          <label class="block text-sm font-medium mb-2">Key *</label>
+          <input type="text" id="new-key" class="w-full border rounded px-3 py-2" placeholder="e.g. new_checkout" required>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Description</label>
+          <input type="text" id="edit-description" class="w-full border rounded px-3 py-2" placeholder="Optional">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="mb-4">
+            <label class="flex items-center">
+              <input type="checkbox" id="edit-enabled" class="mr-2">
+              <span class="text-sm font-medium">Enabled (global default)</span>
+            </label>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Rollout % (0..100)</label>
+            <input type="number" id="edit-rollout" class="w-full border rounded px-3 py-2" min="0" max="100" value="0">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Allow user IDs (comma-separated)</label>
+            <textarea id="edit-allow-users" class="w-full border rounded px-3 py-2 font-mono text-sm" rows="3" placeholder="ObjectId, ObjectId"></textarea>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Allow org IDs (comma-separated)</label>
+            <textarea id="edit-allow-orgs" class="w-full border rounded px-3 py-2 font-mono text-sm" rows="3" placeholder="ObjectId, ObjectId"></textarea>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Deny user IDs (comma-separated)</label>
+            <textarea id="edit-deny-users" class="w-full border rounded px-3 py-2 font-mono text-sm" rows="3" placeholder="ObjectId, ObjectId"></textarea>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Deny org IDs (comma-separated)</label>
+            <textarea id="edit-deny-orgs" class="w-full border rounded px-3 py-2 font-mono text-sm" rows="3" placeholder="ObjectId, ObjectId"></textarea>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Payload (JSON)</label>
+          <textarea id="edit-payload" class="w-full border rounded px-3 py-2 font-mono text-sm" rows="6">null</textarea>
+        </div>
+
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
+    let allFlags = [];
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast px-6 py-4 rounded-lg shadow-lg text-white ${
+        type === 'success' ? 'bg-green-500' : 'bg-red-500'
+      }`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function csvToArray(text) {
+      if (!text || !text.trim()) return [];
+      return text
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => v);
+    }
+
+    function arrayToCsv(arr) {
+      if (!arr || !Array.isArray(arr) || arr.length === 0) return '';
+      return arr.join(', ');
+    }
+
+    async function loadFlags() {
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/feature-flags`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to load flags');
+        }
+
+        allFlags = Array.isArray(data) ? data : [];
+        renderFlags();
+        showToast('Flags loaded successfully');
+      } catch (error) {
+        showToast(error.message, 'error');
+        document.getElementById('flags-container').innerHTML = `
+          <div class="text-center py-12 text-red-600">
+            <p>Error loading flags: ${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderFlags() {
+      const container = document.getElementById('flags-container');
+
+      if (!allFlags || allFlags.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12">
+            <p class="text-gray-600">No feature flags found. Create your first flag!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = allFlags.map((flag) => {
+        const allowUsers = flag.allowListUserIds?.length || 0;
+        const allowOrgs = flag.allowListOrgIds?.length || 0;
+        const denyUsers = flag.denyListUserIds?.length || 0;
+        const denyOrgs = flag.denyListOrgIds?.length || 0;
+
+        return `
+          <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex-1">
+                <div class="flex items-center space-x-2 mb-2">
+                  <h3 class="text-lg font-bold text-gray-900">${escapeHtml(flag.key)}</h3>
+                  ${flag.enabled ? '<span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">Enabled</span>' : '<span class="px-2 py-1 text-xs rounded bg-gray-100 text-gray-600">Disabled</span>'}
+                  <span class="px-2 py-1 text-xs rounded bg-blue-50 text-blue-700">Rollout: ${Number(flag.rolloutPercentage || 0)}%</span>
+                </div>
+                ${flag.description ? `<p class="text-sm text-gray-600 mb-3">${escapeHtml(flag.description)}</p>` : ''}
+                <div class="text-xs text-gray-600 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>Allow users: <span class="font-semibold">${allowUsers}</span></div>
+                  <div>Allow orgs: <span class="font-semibold">${allowOrgs}</span></div>
+                  <div>Deny users: <span class="font-semibold">${denyUsers}</span></div>
+                  <div>Deny orgs: <span class="font-semibold">${denyOrgs}</span></div>
+                </div>
+              </div>
+              <div class="flex space-x-2 ml-4">
+                <button onclick="editFlag('${escapeJs(flag.key)}')" class="text-blue-600 hover:text-blue-800" title="Edit">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                </button>
+                <button onclick="deleteFlag('${escapeJs(flag.key)}')" class="text-red-600 hover:text-red-800" title="Delete">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="bg-gray-50 rounded p-3">
+              <p class="text-xs text-gray-500 mb-1">Payload</p>
+              <pre class="text-sm text-gray-800 overflow-auto max-h-40">${escapeHtml(JSON.stringify(flag.payload ?? null, null, 2))}</pre>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = String(text ?? '');
+      return div.innerHTML;
+    }
+
+    function escapeJs(text) {
+      return String(text ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function showCreateModal() {
+      document.getElementById('modal-title').textContent = 'Create New Flag';
+      document.getElementById('edit-mode').value = 'create';
+      document.getElementById('edit-key').value = '';
+      document.getElementById('new-key').value = '';
+      document.getElementById('edit-description').value = '';
+      document.getElementById('edit-enabled').checked = false;
+      document.getElementById('edit-rollout').value = '0';
+      document.getElementById('edit-allow-users').value = '';
+      document.getElementById('edit-allow-orgs').value = '';
+      document.getElementById('edit-deny-users').value = '';
+      document.getElementById('edit-deny-orgs').value = '';
+      document.getElementById('edit-payload').value = 'null';
+
+      document.getElementById('key-input-container').style.display = 'block';
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    function editFlag(key) {
+      const flag = allFlags.find((f) => f.key === key);
+      if (!flag) return;
+
+      document.getElementById('modal-title').textContent = 'Edit Flag';
+      document.getElementById('edit-mode').value = 'edit';
+      document.getElementById('edit-key').value = key;
+      document.getElementById('new-key').value = key;
+      document.getElementById('edit-description').value = flag.description || '';
+      document.getElementById('edit-enabled').checked = Boolean(flag.enabled);
+      document.getElementById('edit-rollout').value = String(Number(flag.rolloutPercentage || 0));
+      document.getElementById('edit-allow-users').value = arrayToCsv(flag.allowListUserIds);
+      document.getElementById('edit-allow-orgs').value = arrayToCsv(flag.allowListOrgIds);
+      document.getElementById('edit-deny-users').value = arrayToCsv(flag.denyListUserIds);
+      document.getElementById('edit-deny-orgs').value = arrayToCsv(flag.denyListOrgIds);
+      document.getElementById('edit-payload').value = JSON.stringify(flag.payload ?? null, null, 2);
+
+      document.getElementById('key-input-container').style.display = 'none';
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('edit-modal').classList.add('hidden');
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+
+      const mode = document.getElementById('edit-mode').value;
+      const key = mode === 'create' ? document.getElementById('new-key').value.trim() : document.getElementById('edit-key').value;
+
+      const description = document.getElementById('edit-description').value.trim();
+      const enabled = document.getElementById('edit-enabled').checked;
+      const rolloutPercentage = Number(document.getElementById('edit-rollout').value || 0);
+
+      let payload = null;
+      const payloadRaw = document.getElementById('edit-payload').value;
+      try {
+        payload = payloadRaw && payloadRaw.trim() ? JSON.parse(payloadRaw) : null;
+      } catch (e) {
+        showToast(`Invalid payload JSON: ${e.message}`, 'error');
+        return;
+      }
+
+      const body = {
+        key,
+        description,
+        enabled,
+        rolloutPercentage,
+        allowListUserIds: csvToArray(document.getElementById('edit-allow-users').value),
+        allowListOrgIds: csvToArray(document.getElementById('edit-allow-orgs').value),
+        denyListUserIds: csvToArray(document.getElementById('edit-deny-users').value),
+        denyListOrgIds: csvToArray(document.getElementById('edit-deny-orgs').value),
+        payload,
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/feature-flags${mode === 'edit' ? `/${encodeURIComponent(key)}` : ''}`, {
+          method: mode === 'edit' ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || 'Operation failed');
+        }
+
+        showToast(mode === 'edit' ? 'Flag updated successfully' : 'Flag created successfully');
+        closeModal();
+        await loadFlags();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
+    async function deleteFlag(key) {
+      if (!confirm(`Are you sure you want to delete flag "${key}"? This cannot be undone.`)) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/feature-flags/${encodeURIComponent(key)}`, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to delete flag');
+        }
+
+        showToast('Flag deleted successfully');
+        await loadFlags();
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
+    loadFlags();
+  </script>
+</body>
+</html>
