@@ -22,8 +22,9 @@ exports.subscribe = async (req, res) => {
       });
     }
 
-    // Validate type
-    if (!type || !['buyer', 'seller', 'both'].includes(type)) {
+    // Validate type (generic)
+    const sanitizedType = sanitizeString(type);
+    if (!sanitizedType || typeof sanitizedType !== 'string' || !sanitizedType.trim()) {
       return res.status(400).json({ 
         error: 'Please select your interest type',
         field: 'type'
@@ -42,7 +43,7 @@ exports.subscribe = async (req, res) => {
     // Create new waiting list entry
     const waitingListEntry = new WaitingList({
       email: sanitizedEmail.toLowerCase(),
-      type: type,
+      type: sanitizedType.trim(),
       referralSource: sanitizeString(referralSource) || 'website'
     });
 
@@ -86,8 +87,22 @@ exports.subscribe = async (req, res) => {
 exports.getStats = async (req, res) => {
   try {
     const totalSubscribers = await WaitingList.countDocuments({ status: 'active' });
-    const buyerCount = await WaitingList.countDocuments({ status: 'active', type: { $in: ['buyer', 'both'] } });
-    const sellerCount = await WaitingList.countDocuments({ status: 'active', type: { $in: ['seller', 'both'] } });
+
+    const typeAgg = await WaitingList.aggregate([
+      { $match: { status: 'active' } },
+      { $group: { _id: '$type', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+    ]);
+
+    const typeCounts = (typeAgg || []).reduce((acc, row) => {
+      if (!row?._id) return acc;
+      acc[String(row._id)] = row.count || 0;
+      return acc;
+    }, {});
+
+    // Backward compatibility fields (legacy UI/tests)
+    const buyerCount = (typeCounts.buyer || 0) + (typeCounts.both || 0);
+    const sellerCount = (typeCounts.seller || 0) + (typeCounts.both || 0);
 
     // Add some mock growth data for demonstration
     const growthThisWeek = Math.floor(totalSubscribers * 0.05); // 5% growth
@@ -96,6 +111,7 @@ exports.getStats = async (req, res) => {
       totalSubscribers,
       buyerCount,
       sellerCount,
+      typeCounts,
       growthThisWeek,
       lastUpdated: new Date().toISOString()
     });

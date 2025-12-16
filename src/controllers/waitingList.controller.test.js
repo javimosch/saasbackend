@@ -116,23 +116,8 @@ describe('WaitingList Controller', () => {
       });
     });
 
-    test('should return 400 when type is invalid', async () => {
-      mockReq.body = {
-        email: 'test@example.com',
-        type: 'invalid'
-      };
-
-      await subscribe(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: 'Please select your interest type',
-        field: 'type'
-      });
-    });
-
-    test('should accept all valid types', async () => {
-      const validTypes = ['buyer', 'seller', 'both'];
+    test('should accept any non-empty type string', async () => {
+      const validTypes = ['buyer', 'seller', 'both', 'partner', 'agency'];
       
       for (const type of validTypes) {
         mockReq.body = {
@@ -321,26 +306,32 @@ describe('WaitingList Controller', () => {
   describe('getStats', () => {
     test('should return waiting list statistics', async () => {
       WaitingList.countDocuments
-        .mockResolvedValueOnce(1000) // total
-        .mockResolvedValueOnce(600)  // buyers
-        .mockResolvedValueOnce(500); // sellers
+        .mockResolvedValueOnce(1000); // total
+
+      WaitingList.aggregate.mockResolvedValue([
+        { _id: 'buyer', count: 600 },
+        { _id: 'seller', count: 500 },
+        { _id: 'partner', count: 10 },
+      ]);
 
       await getStats(mockReq, mockRes);
 
       expect(WaitingList.countDocuments).toHaveBeenCalledWith({ status: 'active' });
-      expect(WaitingList.countDocuments).toHaveBeenCalledWith({ 
-        status: 'active', 
-        type: { $in: ['buyer', 'both'] } 
-      });
-      expect(WaitingList.countDocuments).toHaveBeenCalledWith({ 
-        status: 'active', 
-        type: { $in: ['seller', 'both'] } 
-      });
+      expect(WaitingList.aggregate).toHaveBeenCalledWith([
+        { $match: { status: 'active' } },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ]);
 
       expect(mockRes.json).toHaveBeenCalledWith({
         totalSubscribers: 1000,
         buyerCount: 600,
         sellerCount: 500,
+        typeCounts: {
+          buyer: 600,
+          seller: 500,
+          partner: 10,
+        },
         growthThisWeek: 50, // 5% of 1000
         lastUpdated: expect.any(String)
       });
@@ -348,6 +339,7 @@ describe('WaitingList Controller', () => {
 
     test('should handle zero subscribers', async () => {
       WaitingList.countDocuments.mockResolvedValue(0);
+      WaitingList.aggregate.mockResolvedValue([]);
 
       await getStats(mockReq, mockRes);
 
@@ -355,6 +347,7 @@ describe('WaitingList Controller', () => {
         totalSubscribers: 0,
         buyerCount: 0,
         sellerCount: 0,
+        typeCounts: {},
         growthThisWeek: 0
       }));
     });
@@ -375,6 +368,7 @@ describe('WaitingList Controller', () => {
 
     test('should include lastUpdated timestamp', async () => {
       WaitingList.countDocuments.mockResolvedValue(100);
+      WaitingList.aggregate.mockResolvedValue([]);
 
       const before = new Date().toISOString();
       await getStats(mockReq, mockRes);
@@ -395,6 +389,7 @@ describe('WaitingList Controller', () => {
 
       for (const testCase of testCases) {
         WaitingList.countDocuments.mockResolvedValue(testCase.total);
+        WaitingList.aggregate.mockResolvedValue([]);
 
         await getStats(mockReq, mockRes);
 

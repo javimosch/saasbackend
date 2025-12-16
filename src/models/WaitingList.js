@@ -11,7 +11,6 @@ const waitingListSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['buyer', 'seller', 'both'],
     required: true,
     default: 'both'
   },
