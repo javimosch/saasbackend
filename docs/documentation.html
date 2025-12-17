@@ -102,10 +102,24 @@
                                 <div id="doc-status" class="text-xs text-slate-500">Loading…</div>
                             </div>
 
-                            <input id="search" type="text" placeholder="Search titles…" class="w-full border rounded-lg px-3 py-2 text-sm" />
+                            <input id="search" type="text" placeholder="Search titles, categories, or features…" class="w-full border rounded-lg px-3 py-2 text-sm mb-3" />
+
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <button onclick="filterCategory('All')" class="px-3 py-1 text-xs rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200">All</button>
+                                <button onclick="filterCategory('Quick Start')" class="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200">🚀 Quick Start</button>
+                                <button onclick="filterCategory('Authentication & Security')" class="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700 hover:bg-green-200">🔐 Security</button>
+                                <button onclick="filterCategory('Admin & Management')" class="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200">🛠️ Admin</button>
+                                <button onclick="filterCategory('Billing & Payments')" class="px-3 py-1 text-xs rounded-full bg-orange-100 text-orange-700 hover:bg-orange-200">💳 Billing</button>
+                                <button onclick="filterCategory('Data & Storage')" class="px-3 py-1 text-xs rounded-full bg-teal-100 text-teal-700 hover:bg-teal-200">📁 Data</button>
+                                <button onclick="filterCategory('Communication')" class="px-3 py-1 text-xs rounded-full bg-pink-100 text-pink-700 hover:bg-pink-200">📧 Communication</button>
+                                <button onclick="filterCategory('Advanced Features')" class="px-3 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200">🏗️ Advanced</button>
+                            </div>
 
                             <div class="mt-4">
-                                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Features</div>
+                                <div class="flex items-center justify-between gap-3 mb-3">
+                                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Features</div>
+                                    <div id="results-count" class="text-xs text-slate-400"></div>
+                                </div>
                                 <div id="feature-links" class="mt-2 space-y-1"></div>
                             </div>
                         </div>
@@ -132,28 +146,43 @@
 
     <script>
         const FEATURES = [
-            { id: 'core-configuration', title: 'Core configuration', path: 'features/core-configuration.md' },
-            { id: 'getting-started', title: 'Getting started', path: 'features/getting-started.md' },
-            { id: 'auth-and-jwt', title: 'Auth & JWT', path: 'features/auth-and-jwt.md' },
-            { id: 'middleware-mode', title: 'Middleware mode', path: 'features/middleware-mode.md' },
-            { id: 'integration-patterns', title: 'Integration patterns', path: 'features/integration-patterns.md' },
-            { id: 'admin-panel', title: 'Admin panel', path: 'features/admin-panel.md' },
-            { id: 'admin-api-usage', title: 'Admin API usage', path: 'features/admin-api-usage.md' },
-            { id: 'admin-users-notifications', title: 'Admin users & notifications', path: 'features/admin-users-notifications.md' },
-            { id: 'global-settings', title: 'Global settings', path: 'features/global-settings.md' },
-            { id: 'feature-flags', title: 'Feature flags', path: 'features/feature-flags.md' },
-            { id: 'json-configs', title: 'JSON configs', path: 'features/json-configs.md' },
-            { id: 'file-storage', title: 'File storage (assets)', path: 'features/file-storage.md' },
-            { id: 'forms', title: 'Forms', path: 'features/forms.md' },
-            { id: 'i18n', title: 'Internationalization (i18n)', path: 'features/i18n.md' },
-            { id: 'email-system', title: 'Email system', path: 'features/email-system.md' },
-            { id: 'billing-and-subscriptions', title: 'Billing & subscriptions', path: 'features/billing-and-subscriptions.md' },
-            { id: 'stripe-pricing-management', title: 'Stripe pricing management', path: 'features/stripe-pricing-management.md' },
-            { id: 'stripe-webhook-improvements', title: 'Stripe webhook improvements', path: 'features/stripe-webhook-improvements.md' },
-            { id: 'webhook-testing-guide', title: 'Stripe webhook testing guide', path: 'features/webhook-testing-guide.md' },
-            { id: 'waiting-list-and-forms', title: 'Waiting list & forms', path: 'features/waiting-list-and-forms.md' },
-            { id: 'metrics-and-activity', title: 'Metrics & activity', path: 'features/metrics-and-activity.md' },
-            { id: 'production-checklist', title: 'Production checklist', path: 'features/production-checklist.md' },
+            // Quick Start Section
+            { id: 'getting-started', title: '🚀 Getting started', path: 'features/getting-started.md', category: 'Quick Start' },
+            { id: 'core-configuration', title: '⚙️ Core configuration', path: 'features/core-configuration.md', category: 'Quick Start' },
+            { id: 'integration-patterns', title: '🔗 Integration patterns', path: 'features/integration-patterns.md', category: 'Quick Start' },
+            
+            // Authentication & Security
+            { id: 'auth-and-jwt', title: '🔐 Auth & JWT', path: 'features/auth-and-jwt.md', category: 'Authentication & Security' },
+            { id: 'global-settings', title: '🔐 Global settings', path: 'features/global-settings.md', category: 'Authentication & Security' },
+            { id: 'feature-flags', title: '🔀 Feature flags', path: 'features/feature-flags.md', category: 'Authentication & Security' },
+            { id: 'production-checklist', title: '🔒 Production checklist', path: 'features/production-checklist.md', category: 'Authentication & Security' },
+            
+            // Admin & Management
+            { id: 'admin-panel', title: '🛠️ Admin panel', path: 'features/admin-panel.md', category: 'Admin & Management' },
+            { id: 'admin-api-usage', title: '🛠️ Admin API usage', path: 'features/admin-api-usage.md', category: 'Admin & Management' },
+            { id: 'admin-users-notifications', title: '👥 Admin users & notifications', path: 'features/admin-users-notifications.md', category: 'Admin & Management' },
+            
+            // Billing & Payments
+            { id: 'billing-and-subscriptions', title: '💳 Billing & subscriptions', path: 'features/billing-and-subscriptions.md', category: 'Billing & Payments' },
+            { id: 'stripe-pricing-management', title: '💳 Stripe pricing management', path: 'features/stripe-pricing-management.md', category: 'Billing & Payments' },
+            { id: 'stripe-webhook-improvements', title: '💳 Stripe webhook improvements', path: 'features/stripe-webhook-improvements.md', category: 'Billing & Payments' },
+            { id: 'webhook-testing-guide', title: '🧪 Stripe webhook testing guide', path: 'features/webhook-testing-guide.md', category: 'Billing & Payments' },
+            
+            // Data & Storage
+            { id: 'file-storage', title: '📁 File storage (assets)', path: 'features/file-storage.md', category: 'Data & Storage' },
+            { id: 'json-configs', title: '📋 JSON configs', path: 'features/json-configs.md', category: 'Data & Storage' },
+            { id: 'metrics-and-activity', title: '📊 Metrics & activity', path: 'features/metrics-and-activity.md', category: 'Data & Storage' },
+            
+            // Communication
+            { id: 'email-system', title: '📧 Email system', path: 'features/email-system.md', category: 'Communication' },
+            { id: 'waiting-list-and-forms', title: '📝 Waiting list & forms', path: 'features/waiting-list-and-forms.md', category: 'Communication' },
+            { id: 'forms', title: '📝 Forms', path: 'features/forms.md', category: 'Communication' },
+            { id: 'i18n', title: '🌐 Internationalization (i18n)', path: 'features/i18n.md', category: 'Communication' },
+            
+            // Advanced Features
+            { id: 'middleware-mode', title: '🏗️ Middleware mode', path: 'features/middleware-mode.md', category: 'Advanced Features' },
+            { id: 'organizations', title: '🏢 Organizations', path: 'features/organizations.md', category: 'Advanced Features' },
+            { id: 'invitations', title: '👥 Invitations', path: 'features/invitations.md', category: 'Advanced Features' },
         ];
 
         function escapeHtml(str) {
@@ -232,8 +261,59 @@
             }
         }
 
+        let currentCategory = 'All';
+
+        function filterCategory(category) {
+            currentCategory = category;
+            const searchInput = document.getElementById('search').value;
+            renderLinks(searchInput, category);
+            
+            // Update button styles
+            document.querySelectorAll('button[onclick^="filterCategory"]').forEach(btn => {
+                const isActive = btn.textContent.includes(category) || (category === 'All' && btn.textContent.includes('All'));
+                if (isActive) {
+                    btn.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50');
+                }
+            });
+        }
+
+        function renderLinks(filterText = '', category = currentCategory) {
+            const container = document.getElementById('feature-links');
+            const q = String(filterText || '').trim().toLowerCase();
+            const resultsCount = document.getElementById('results-count');
+
+            let filtered = FEATURES;
+
+            if (category !== 'All') {
+                filtered = FEATURES.filter(f => f.category === category);
+            }
+
+            if (q) {
+                filtered = filtered.filter((f) => 
+                    f.title.toLowerCase().includes(q) || 
+                    f.category.toLowerCase().includes(q) ||
+                    f.path.toLowerCase().includes(q)
+                );
+            }
+
+            container.innerHTML = filtered.map((f) => {
+                return `
+                    <a href="#${escapeHtml(f.id)}" class="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200">
+                        <div class="flex items-center justify-between">
+                            <span>${escapeHtml(f.title)}</span>
+                            <span class="text-xs text-slate-400">${escapeHtml(f.category)}</span>
+                        </div>
+                    </a>
+                `;
+            }).join('') || '<div class="text-sm text-slate-500">No matches found</div>';
+
+            resultsCount.textContent = `${filtered.length} of ${FEATURES.length}`;
+        }
+
         document.getElementById('search').addEventListener('input', (e) => {
-            renderLinks(e.target.value);
+            renderLinks(e.target.value, currentCategory);
         });
 
         window.addEventListener('hashchange', () => {
@@ -242,7 +322,7 @@
             if (el) el.scrollIntoView({ behavior: 'smooth' });
         });
 
-        renderLinks('');
+        renderLinks('', 'All');
         renderDocs();
     </script>
 </body>

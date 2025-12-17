@@ -33,6 +33,12 @@ app.use('/saas', middleware({
 app.listen(3000);
 ```
 
+## Standalone mode (dev, via Docker Compose)
+
+```bash
+docker compose -f compose.standalone.yml up --build
+```
+
 Verify:
 
 ```bash
