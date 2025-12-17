@@ -47,6 +47,12 @@ const assetSchema = new mongoose.Schema({
     required: true,
     default: false,
   },
+  tags: {
+    type: [String],
+    required: true,
+    default: [],
+    index: true,
+  },
   ownerUserId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -73,5 +79,6 @@ assetSchema.index({ ownerUserId: 1, createdAt: -1 });
 assetSchema.index({ visibility: 1, status: 1 });
 assetSchema.index({ orgId: 1, createdAt: -1 });
 assetSchema.index({ namespace: 1, createdAt: -1 });
+assetSchema.index({ tags: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Asset', assetSchema);

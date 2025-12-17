@@ -19,6 +19,7 @@ const formatAssetResponse = (asset) => {
     visibility: obj.visibility,
     namespace: obj.namespace,
     visibilityEnforced: obj.visibilityEnforced,
+    tags: Array.isArray(obj.tags) ? obj.tags : [],
     ownerUserId: obj.ownerUserId,
     orgId: obj.orgId,
     status: obj.status,
@@ -31,6 +32,21 @@ const formatAssetResponse = (asset) => {
   }
 
   return response;
+};
+
+const normalizeTags = (value) => {
+  if (value === undefined) return undefined;
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(',')
+      : [value];
+
+  const tags = raw
+    .map((t) => String(t).trim().toLowerCase())
+    .filter(Boolean);
+
+  return Array.from(new Set(tags));
 };
 
 exports.list = async (req, res) => {
@@ -65,6 +81,13 @@ exports.list = async (req, res) => {
 
     if (req.query.namespace) {
       filter.namespace = String(req.query.namespace);
+    }
+
+    if (req.query.tag) {
+      const tag = String(req.query.tag).trim().toLowerCase();
+      if (tag) {
+        filter.tags = tag;
+      }
     }
 
     const [assets, total] = await Promise.all([
@@ -186,13 +209,17 @@ exports.update = async (req, res) => {
       return res.status(404).json({ error: 'Asset not found' });
     }
 
-    const allowedFields = ['visibility', 'orgId'];
+    const allowedFields = ['visibility', 'orgId', 'tags'];
     const updates = {};
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
       }
+    }
+
+    if (updates.tags !== undefined) {
+      updates.tags = normalizeTags(updates.tags) || [];
     }
 
     if (updates.visibility && !['public', 'private'].includes(updates.visibility)) {
