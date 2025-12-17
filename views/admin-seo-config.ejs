@@ -79,6 +79,70 @@
       <div class="bg-white rounded-lg shadow">
         <div class="px-4 py-3 border-b">
           <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-900">AI helpers (SEO JSON)</h2>
+            <div class="flex gap-2">
+              <button class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm" onclick="seoAiLoadViews()">Infer .ejs views</button>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600 mt-1">Generate or improve <code>pages</code> entries with AI, then apply them into the <code>seo-config</code> JSON.</p>
+        </div>
+
+        <div class="p-4 space-y-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <h3 class="text-sm font-semibold text-gray-900">Add new entry from EJS view</h3>
+              <div class="mt-2 space-y-3">
+                <div>
+                  <label class="block text-sm font-medium">View (.ejs)</label>
+                  <select id="seo-ai-view" class="mt-1 w-full border rounded px-3 py-2 text-sm">
+                    <option value="">(load views)</option>
+                  </select>
+                  <div class="mt-1 text-xs text-gray-600" id="seo-ai-views-status"></div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium">Route path</label>
+                  <input id="seo-ai-route" class="mt-1 w-full border rounded px-3 py-2 text-sm" placeholder="/marketplace" />
+                </div>
+                <div class="flex gap-2">
+                  <button class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm" onclick="seoAiGenerateFromView()">Generate entry</button>
+                  <button class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm" onclick="seoAiApplyProposed()">Apply</button>
+                </div>
+                <div class="text-xs text-gray-600" id="seo-ai-generate-status"></div>
+                <pre id="seo-ai-proposed" class="bg-gray-50 rounded p-3 text-xs overflow-auto" style="min-height: 96px;"></pre>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-semibold text-gray-900">Improve existing entry</h3>
+              <div class="mt-2 space-y-3">
+                <div>
+                  <label class="block text-sm font-medium">Select existing route</label>
+                  <select id="seo-ai-existing-route" class="mt-1 w-full border rounded px-3 py-2 text-sm">
+                    <option value="">(load from JSON)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium">Instruction</label>
+                  <input id="seo-ai-instruction" class="mt-1 w-full border rounded px-3 py-2 text-sm" placeholder="Improve description including desktop apps" />
+                </div>
+                <div class="flex gap-2">
+                  <button class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm" onclick="seoAiImproveEntry()">Generate improved entry</button>
+                  <button class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm" onclick="seoAiApplyProposed()">Apply</button>
+                </div>
+                <div class="text-xs text-gray-600" id="seo-ai-improve-status"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-xs text-gray-600">
+            Endpoints used: <code>/api/admin/seo-config/ai/*</code> and <code>/api/admin/seo-config/pages/apply-entry</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow">
+        <div class="px-4 py-3 border-b">
+          <div class="flex justify-between items-center">
             <h2 class="text-lg font-semibold text-gray-900">OG Share Image</h2>
             <div class="flex gap-2">
               <button class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm" onclick="reloadOgPng()">Reload PNG</button>
@@ -222,11 +286,144 @@
         status.textContent = 'Loaded';
         document.getElementById('og-svg-status').textContent = '';
 
+        try {
+          seoAiRefreshRoutesFromJson(document.getElementById('seo-json-raw').value);
+        } catch {}
+
         await reloadOgPng();
 
         return data;
       } catch (e) {
         status.textContent = e.message || 'Failed to load';
+        showToast(status.textContent, 'error');
+      }
+    }
+
+    function seoAiRefreshRoutesFromJson(jsonRaw) {
+      let parsed;
+      parsed = JSON.parse(String(jsonRaw || ''));
+      const pages = parsed && typeof parsed === 'object' ? parsed.pages : null;
+      const routes = pages && typeof pages === 'object' ? Object.keys(pages) : [];
+      routes.sort();
+
+      const select = document.getElementById('seo-ai-existing-route');
+      const current = select.value;
+      select.innerHTML = '<option value="">(select)</option>';
+      for (const r of routes) {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        select.appendChild(opt);
+      }
+      if (routes.includes(current)) select.value = current;
+    }
+
+    async function seoAiLoadViews() {
+      const status = document.getElementById('seo-ai-views-status');
+      status.textContent = 'Loading views...';
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/seo-config/ai/views`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to load views');
+
+        const views = Array.isArray(data?.views) ? data.views : [];
+        const select = document.getElementById('seo-ai-view');
+        select.innerHTML = '<option value="">(select a view)</option>';
+        for (const v of views) {
+          const opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = v;
+          select.appendChild(opt);
+        }
+
+        status.textContent = `Loaded ${views.length} view(s)`;
+      } catch (e) {
+        status.textContent = e.message || 'Failed to load views';
+        showToast(status.textContent, 'error');
+      }
+    }
+
+    let seoAiProposed = null;
+
+    function seoAiSetProposed({ routePath, entry, model }) {
+      seoAiProposed = { routePath, entry, model };
+      const pre = document.getElementById('seo-ai-proposed');
+      pre.textContent = JSON.stringify({ routePath, entry, model }, null, 2);
+    }
+
+    async function seoAiGenerateFromView() {
+      const status = document.getElementById('seo-ai-generate-status');
+      status.textContent = 'Generating...';
+      try {
+        const viewPath = document.getElementById('seo-ai-view').value;
+        const routePath = document.getElementById('seo-ai-route').value;
+        const res = await fetch(`${API_BASE}/api/admin/seo-config/ai/generate-entry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ viewPath, routePath }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to generate entry');
+
+        seoAiSetProposed({ routePath: data.routePath, entry: data.entry, model: data.model });
+        status.textContent = `Generated (model: ${data.model || 'unknown'})`;
+        showToast('Generated SEO entry');
+      } catch (e) {
+        status.textContent = e.message || 'Failed to generate entry';
+        showToast(status.textContent, 'error');
+      }
+    }
+
+    async function seoAiImproveEntry() {
+      const status = document.getElementById('seo-ai-improve-status');
+      status.textContent = 'Generating...';
+      try {
+        const routePath = document.getElementById('seo-ai-existing-route').value;
+        const instruction = document.getElementById('seo-ai-instruction').value;
+        const res = await fetch(`${API_BASE}/api/admin/seo-config/ai/improve-entry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ routePath, instruction }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to improve entry');
+
+        seoAiSetProposed({ routePath: data.routePath, entry: data.entry, model: data.model });
+        status.textContent = `Generated (model: ${data.model || 'unknown'})`;
+        showToast('Generated improved SEO entry');
+      } catch (e) {
+        status.textContent = e.message || 'Failed to improve entry';
+        showToast(status.textContent, 'error');
+      }
+    }
+
+    async function seoAiApplyProposed() {
+      const status = document.getElementById('seo-json-status');
+      if (!seoAiProposed?.routePath || !seoAiProposed?.entry) {
+        showToast('No proposed entry to apply', 'error');
+        return;
+      }
+
+      status.textContent = 'Applying...';
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/seo-config/pages/apply-entry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ routePath: seoAiProposed.routePath, entry: seoAiProposed.entry }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to apply entry');
+
+        const jsonRaw = data?.result?.jsonRaw;
+        if (typeof jsonRaw === 'string') {
+          document.getElementById('seo-json-raw').value = jsonRaw;
+          seoAiRefreshRoutesFromJson(jsonRaw);
+        }
+
+        status.textContent = 'Applied';
+        showToast('Applied entry to SEO JSON');
+      } catch (e) {
+        status.textContent = e.message || 'Failed to apply';
         showToast(status.textContent, 'error');
       }
     }

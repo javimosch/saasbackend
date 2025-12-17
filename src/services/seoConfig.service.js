@@ -44,6 +44,13 @@ async function getSeoJsonConfig() {
   return doc.toObject ? doc.toObject() : doc;
 }
 
+async function getSeoConfigData() {
+  const doc = await ensureSeoJsonConfigExists();
+  const jsonRaw = String(doc.jsonRaw || '');
+  const data = parseJsonOrThrow(jsonRaw);
+  return { doc, data };
+}
+
 async function updateSeoJsonConfig(patch) {
   const doc = await ensureSeoJsonConfigExists();
 
@@ -69,6 +76,51 @@ async function updateSeoJsonConfig(patch) {
 
   await doc.save();
   return doc.toObject();
+}
+
+async function applySeoPageEntry({ routePath, entry }) {
+  const route = String(routePath || '').trim();
+  if (!route || !route.startsWith('/')) {
+    const err = new Error('routePath must start with /');
+    err.code = 'VALIDATION';
+    throw err;
+  }
+
+  const e = entry && typeof entry === 'object' ? entry : null;
+  if (!e) {
+    const err = new Error('entry is required');
+    err.code = 'VALIDATION';
+    throw err;
+  }
+
+  const title = e.title !== undefined ? String(e.title || '') : '';
+  const description = e.description !== undefined ? String(e.description || '') : '';
+  const robots = e.robots !== undefined && e.robots !== null ? String(e.robots) : undefined;
+
+  if (!title.trim()) {
+    const err = new Error('entry.title is required');
+    err.code = 'VALIDATION';
+    throw err;
+  }
+  if (!description.trim()) {
+    const err = new Error('entry.description is required');
+    err.code = 'VALIDATION';
+    throw err;
+  }
+
+  const { doc, data } = await getSeoConfigData();
+
+  if (!data.pages || typeof data.pages !== 'object' || Array.isArray(data.pages)) {
+    data.pages = {};
+  }
+
+  const next = { title: title.trim(), description: description.trim() };
+  if (robots !== undefined) next.robots = robots;
+
+  data.pages[route] = next;
+  doc.jsonRaw = JSON.stringify(data, null, 2);
+  await doc.save();
+  return { routePath: route, entry: next, jsonRaw: doc.jsonRaw };
 }
 
 async function getOgSvgSettingRaw() {
@@ -339,7 +391,9 @@ module.exports = {
   DEFAULT_OG_PNG_HEIGHT,
   ensureSeoJsonConfigExists,
   getSeoJsonConfig,
+  getSeoConfigData,
   updateSeoJsonConfig,
+  applySeoPageEntry,
   getOgSvgSettingRaw,
   setOgSvgSettingRaw,
   generateOgPng,
