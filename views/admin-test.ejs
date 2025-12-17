@@ -60,6 +60,7 @@
   <script>
     const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
     const ENDPOINT_REGISTRY = <%- JSON.stringify(endpointRegistry || []) %>;
+    const ADMIN_UI_BASE = "<%= (baseUrl || '') %>" + "/admin";
     
     function showToast(message, type = 'success') {
       const container = document.getElementById('toast-container');
@@ -165,15 +166,15 @@
         groupEl.appendChild(groupContent);
 
         const dedicatedPages = {
-          'global-settings': { href: '/admin/global-settings', label: '🔧 Settings Manager UI →' },
-          'forms': { href: '/admin/forms', label: '📝 Forms Admin UI →' },
-          'waiting-list': { href: '/admin/waiting-list', label: '📋 Waiting List UI →' },
-          'metrics': { href: '/admin/metrics', label: '📊 Metrics UI →' },
-          'feature-flags': { href: '/admin/feature-flags', label: '🚩 Feature Flags UI →' },
-          'assets': { href: '/admin/assets', label: '📁 Assets Manager UI →' },
-          'i18n': { href: '/admin/i18n', label: '🌐 i18n Manager UI →' },
-          'errors': { href: '/admin/errors', label: '🐞 Error Tracking UI →' },
-          'audit': { href: '/admin/audit', label: '🧾 Audit Log UI →' },
+          'global-settings': { href: `${ADMIN_UI_BASE}/global-settings`, label: '🔧 Settings Manager UI →' },
+          'forms': { href: `${ADMIN_UI_BASE}/forms`, label: '📝 Forms Admin UI →' },
+          'waiting-list': { href: `${ADMIN_UI_BASE}/waiting-list`, label: '📋 Waiting List UI →' },
+          'metrics': { href: `${ADMIN_UI_BASE}/metrics`, label: '📊 Metrics UI →' },
+          'feature-flags': { href: `${ADMIN_UI_BASE}/feature-flags`, label: '🚩 Feature Flags UI →' },
+          'assets': { href: `${ADMIN_UI_BASE}/assets`, label: '📁 Assets Manager UI →' },
+          'i18n': { href: `${ADMIN_UI_BASE}/i18n`, label: '🌐 i18n Manager UI →' },
+          'errors': { href: `${ADMIN_UI_BASE}/errors`, label: '🐞 Error Tracking UI →' },
+          'audit': { href: `${ADMIN_UI_BASE}/audit`, label: '🧾 Audit Log UI →' },
         };
 
         if (dedicatedPages[group.id]) {
