@@ -187,7 +187,7 @@
 
         <div class="mb-3">
           <label class="block text-sm font-medium mb-1">Key prefix</label>
-          <input id="ns-prefix" class="w-full border rounded px-3 py-2" placeholder="assets/avatars">
+          <input id="ns-prefix" class="w-full border rounded px-3 py-2" placeholder="(auto) assets/<namespaceKey>">
         </div>
 
         <div class="mb-3">
@@ -365,7 +365,12 @@
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div><strong>Provider:</strong> ${data.s3Enabled ? 'S3' : 'Filesystem'}</div>
             <div><strong>Bucket:</strong> ${data.bucket}</div>
-            ${data.hardCapMaxFileSizeBytes ? `<div><strong>Hard cap:</strong> ${formatBytes(data.hardCapMaxFileSizeBytes)}</div>` : ''}
+            ${data.multerCeilingMaxFileSizeBytes ? `<div><strong>Multer ceiling:</strong> ${formatBytes(data.multerCeilingMaxFileSizeBytes)}</div>` : ''}
+          </div>
+          <div class="mt-2 text-xs text-blue-900">
+            <div><strong>Env hard cap (fallback):</strong> ${data.envFallbackHardCapMaxFileSizeBytes ? formatBytes(data.envFallbackHardCapMaxFileSizeBytes) : '(not set)'}</div>
+            <div><strong>Setting hard cap:</strong> ${data.configuredHardCapMaxFileSizeBytes ? formatBytes(data.configuredHardCapMaxFileSizeBytes) : '(not set)'}</div>
+            <div><strong>Effective hard cap (enforced):</strong> ${data.hardCapMaxFileSizeBytes ? formatBytes(data.hardCapMaxFileSizeBytes) : '(unknown)'}</div>
           </div>
           <div class="mt-3">
             <div class="text-xs text-blue-900 font-semibold mb-2">Set hard cap (GlobalSetting: MAX_FILE_SIZE_HARD_CAP)</div>
@@ -385,7 +390,9 @@
 
         const input = document.getElementById('hard-cap-input');
         if (input) {
-          input.value = data.hardCapMaxFileSizeBytes ? bytesToHumanInput(data.hardCapMaxFileSizeBytes) : '';
+          input.value = data.configuredHardCapMaxFileSizeBytes
+            ? bytesToHumanInput(data.configuredHardCapMaxFileSizeBytes)
+            : '';
         }
       } catch (error) {
         document.getElementById('storage-info-content').innerHTML = `<p class="text-red-600">Error: ${error.message}</p>`;
@@ -461,7 +468,8 @@
           if (!putRes.ok) throw new Error(putData?.error || 'Failed to update setting');
         }
 
-        if (hint) hint.textContent = `Saved: ${formatBytes(bytes)}. Note: cannot exceed env hard cap enforced by multer.`;
+        if (hint) hint.textContent = `Saved: ${formatBytes(bytes)}.`;
+
         await loadStorageInfo();
         await loadNamespaces();
         await loadNamespacesSummary();
@@ -896,8 +904,9 @@
 
       const maxSizeText = ns.maxFileSizeBytes ? formatBytes(ns.maxFileSizeBytes) : 'default';
       const typesText = Array.isArray(ns.allowedContentTypes) && ns.allowedContentTypes.length ? ns.allowedContentTypes.join(', ') : 'default';
+      const prefixText = ns.keyPrefix ? ns.keyPrefix : `assets/${ns.key || 'default'}`;
 
-      nsHint.textContent = `Max size: ${maxSizeText}. Allowed types: ${typesText}. Prefix: ${ns.keyPrefix || 'assets'}.`;
+      nsHint.textContent = `Max size: ${maxSizeText}. Allowed types: ${typesText}. Prefix: ${prefixText}.`;
 
       if (ns.enforceVisibility) {
         uploadVis.disabled = true;

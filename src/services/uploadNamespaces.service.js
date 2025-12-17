@@ -22,39 +22,48 @@ const parseJson = (value) => {
 
 const MAX_FILE_SIZE_HARD_CAP_SETTING_KEY = 'MAX_FILE_SIZE_HARD_CAP';
 
-const getHardCapMaxFileSizeBytes = () => {
-  const raw = process.env.MAX_FILE_SIZE_HARD_CAP || process.env.MAX_FILE_SIZE || '10485760';
+const DEFAULT_MAX_FILE_SIZE_BYTES = 10485760;
+
+const getEnvHardCapMaxFileSizeBytes = () => {
+  const raw = process.env.MAX_FILE_SIZE_HARD_CAP || process.env.MAX_FILE_SIZE || String(DEFAULT_MAX_FILE_SIZE_BYTES);
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return 10485760;
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_MAX_FILE_SIZE_BYTES;
   return parsed;
 };
 
 const getEffectiveHardCapMaxFileSizeBytes = async () => {
-  const envHardCap = getHardCapMaxFileSizeBytes();
-
   const raw = await globalSettingsService.getSettingValue(MAX_FILE_SIZE_HARD_CAP_SETTING_KEY, null);
-  if (raw === null || raw === undefined || raw === '') return envHardCap;
+  if (raw === null || raw === undefined || raw === '') return getEnvHardCapMaxFileSizeBytes();
 
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return envHardCap;
+  if (!Number.isFinite(parsed) || parsed <= 0) return getEnvHardCapMaxFileSizeBytes();
 
-  return Math.min(envHardCap, parsed);
+  return parsed;
+};
+
+const getConfiguredHardCapMaxFileSizeBytes = async () => {
+  const raw = await globalSettingsService.getSettingValue(MAX_FILE_SIZE_HARD_CAP_SETTING_KEY, null);
+  if (raw === null || raw === undefined || raw === '') return null;
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+
+  return parsed;
 };
 
 const normalizePayload = (namespaceKey, payload) => {
-  const hardCap = getHardCapMaxFileSizeBytes();
-
   const enabled = payload?.enabled === undefined ? true : Boolean(payload.enabled);
 
   let maxFileSizeBytes = payload?.maxFileSizeBytes;
   if (maxFileSizeBytes === undefined || maxFileSizeBytes === null || maxFileSizeBytes === '') {
-    maxFileSizeBytes = hardCap;
+    maxFileSizeBytes = undefined;
   }
-  maxFileSizeBytes = Number(maxFileSizeBytes);
-  if (!Number.isFinite(maxFileSizeBytes) || maxFileSizeBytes <= 0) {
-    maxFileSizeBytes = hardCap;
+  if (maxFileSizeBytes !== undefined) {
+    maxFileSizeBytes = Number(maxFileSizeBytes);
+    if (!Number.isFinite(maxFileSizeBytes) || maxFileSizeBytes <= 0) {
+      maxFileSizeBytes = undefined;
+    }
   }
-  maxFileSizeBytes = Math.min(maxFileSizeBytes, hardCap);
 
   const normalizeArray = (value) => {
     if (value === undefined) return undefined;
@@ -84,13 +93,13 @@ const normalizePayload = (namespaceKey, payload) => {
 const getSettingKey = (namespaceKey) => `${UPLOAD_NAMESPACE_PREFIX}${namespaceKey}`;
 
 const getDefaultNamespaceConfig = (hardCapMaxFileSizeBytes) => {
-  const hardCap = hardCapMaxFileSizeBytes ?? getHardCapMaxFileSizeBytes();
+  const hardCap = hardCapMaxFileSizeBytes ?? getEnvHardCapMaxFileSizeBytes();
   return {
     key: 'default',
     enabled: true,
     maxFileSizeBytes: hardCap,
     allowedContentTypes: objectStorage.getAllowedContentTypes(),
-    keyPrefix: 'assets',
+    keyPrefix: undefined,
     defaultVisibility: 'private',
     enforceVisibility: false,
   };
@@ -185,7 +194,7 @@ async function resolveNamespace(namespaceKey) {
 function validateUpload({ namespaceConfig, contentType, sizeBytes, hardCapMaxFileSizeBytes }) {
   const errors = [];
 
-  const hardCap = hardCapMaxFileSizeBytes ?? getHardCapMaxFileSizeBytes();
+  const hardCap = hardCapMaxFileSizeBytes ?? getEnvHardCapMaxFileSizeBytes();
   const maxSize = Math.min(namespaceConfig?.maxFileSizeBytes ?? hardCap, hardCap);
   if (typeof sizeBytes === 'number' && sizeBytes > maxSize) {
     errors.push({ field: 'sizeBytes', reason: 'File too large', maxFileSizeBytes: maxSize });
@@ -247,9 +256,12 @@ function computeVisibility({ namespaceConfig, requestedVisibility }) {
 
 function computeKeyPrefix(namespaceConfig) {
   const prefix = namespaceConfig?.keyPrefix;
-  if (prefix === undefined || prefix === null) return 'assets';
+  const namespaceKey = namespaceConfig?.key ? String(namespaceConfig.key).trim() : 'default';
+  const safeNamespaceKey = namespaceKey ? namespaceKey.replace(/^\/+/, '').replace(/\/+$/, '') : 'default';
+
+  if (prefix === undefined || prefix === null) return `assets/${safeNamespaceKey}`;
   const trimmed = String(prefix).trim();
-  return trimmed ? trimmed.replace(/^\/+/, '').replace(/\/+$/, '') : 'assets';
+  return trimmed ? trimmed.replace(/^\/+/, '').replace(/\/+$/, '') : `assets/${safeNamespaceKey}`;
 }
 
 function generateObjectKey({ namespaceConfig, originalName }) {
@@ -260,8 +272,10 @@ function generateObjectKey({ namespaceConfig, originalName }) {
 module.exports = {
   UPLOAD_NAMESPACE_PREFIX,
   MAX_FILE_SIZE_HARD_CAP_SETTING_KEY,
-  getHardCapMaxFileSizeBytes,
+  DEFAULT_MAX_FILE_SIZE_BYTES,
+  getEnvHardCapMaxFileSizeBytes,
   getEffectiveHardCapMaxFileSizeBytes,
+  getConfiguredHardCapMaxFileSizeBytes,
   getDefaultNamespaceConfig,
   normalizePayload,
   getSettingKey,

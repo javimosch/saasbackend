@@ -235,6 +235,9 @@ exports.delete = async (req, res) => {
 
 exports.getStorageInfo = async (req, res) => {
   try {
+    const multerCeilingMaxFileSizeBytes = Number(process.env.MULTER_FILE_SIZE_LIMIT || '1073741824');
+    const envFallbackHardCapMaxFileSizeBytes = uploadNamespacesService.getEnvHardCapMaxFileSizeBytes();
+    const configuredHardCapMaxFileSizeBytes = await uploadNamespacesService.getConfiguredHardCapMaxFileSizeBytes();
     const hardCapMaxFileSizeBytes = await uploadNamespacesService.getEffectiveHardCapMaxFileSizeBytes();
 
     res.json({
@@ -242,6 +245,9 @@ exports.getStorageInfo = async (req, res) => {
       bucket: objectStorage.getBucket(),
       s3Enabled: objectStorage.isS3Enabled(),
       maxFileSize: objectStorage.getMaxFileSize(),
+      multerCeilingMaxFileSizeBytes,
+      envFallbackHardCapMaxFileSizeBytes,
+      configuredHardCapMaxFileSizeBytes,
       hardCapMaxFileSizeBytes,
       allowedContentTypes: objectStorage.getAllowedContentTypes()
     });
