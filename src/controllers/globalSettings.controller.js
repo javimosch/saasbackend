@@ -1,5 +1,6 @@
 const GlobalSetting = require('../models/GlobalSetting');
 const { encryptString, decryptString } = require('../utils/encryption');
+const globalSettingsService = require('../services/globalSettings.service');
 
 const redactSetting = (setting) => {
   if (!setting) return setting;
@@ -89,9 +90,8 @@ exports.updateSetting = async (req, res) => {
       setting.value = value;
     }
     await setting.save();
-    
-    // Clear cache if you implement one
-    // cache.del(`setting:${key}`);
+
+    globalSettingsService.clearSettingsCache();
     
     res.json(redactSetting(setting.toObject()));
   } catch (error) {
@@ -134,6 +134,8 @@ exports.createSetting = async (req, res) => {
       templateVariables: templateVariables || [],
       public: isPublic || false
     });
+
+    globalSettingsService.clearSettingsCache();
     
     res.status(201).json(redactSetting(setting.toObject()));
   } catch (error) {
@@ -154,9 +156,8 @@ exports.deleteSetting = async (req, res) => {
         error: `Setting with key '${key}' not found.` 
       });
     }
-    
-    // Clear cache if you implement one
-    // cache.del(`setting:${key}`);
+
+    globalSettingsService.clearSettingsCache();
     
     res.status(204).send();
   } catch (error) {
