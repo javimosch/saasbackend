@@ -173,13 +173,7 @@ exports.sync = async (req, res) => {
       stats.scanned += 1;
       stats.nextCursor = String(asset._id);
 
-      if (asset.provider !== expectedSourceProvider) {
-        // Asset does not belong to the selected source backend; treat as missing from source.
-        stats.skippedMissingSource += 1;
-        continue;
-      }
-
-      if (asset.bucket !== expectedSourceBucket) {
+      if (asset.provider === expectedSourceProvider && asset.bucket !== expectedSourceBucket) {
         // Asset claims it is in the source backend, but points to a different bucket.
         // This is a dangerous mismatch, so abort.
         stats.aborted = true;
