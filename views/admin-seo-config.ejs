@@ -126,6 +126,12 @@
                   <input id="seo-ai-instruction" class="mt-1 w-full border rounded px-3 py-2 text-sm" placeholder="Improve description including desktop apps" />
                 </div>
                 <div class="flex gap-2">
+                  <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input id="seo-ai-robots-noindex" type="checkbox" class="rounded border-gray-300" />
+                    Set <code>robots: 'noindex,follow'</code>
+                  </label>
+                </div>
+                <div class="flex gap-2">
                   <button class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm" onclick="seoAiImproveEntry()">Generate improved entry</button>
                   <button class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm" onclick="seoAiApplyProposed()">Apply</button>
                 </div>
@@ -345,6 +351,45 @@
 
     let seoAiProposed = null;
 
+    function seoAiNormalizeRobotsForImprove(entry) {
+      const robots = document.getElementById('seo-ai-robots-noindex');
+      if (!entry || typeof entry !== 'object') return entry;
+      if (!robots) return entry;
+
+      if (robots.checked) {
+        entry.robots = 'noindex,follow';
+      } else {
+        delete entry.robots;
+      }
+      return entry;
+    }
+
+    function seoAiTryPatchJsonTextareaRobots(routePath) {
+      const jsonEl = document.getElementById('seo-json-raw');
+      const robots = document.getElementById('seo-ai-robots-noindex');
+      if (!jsonEl || !robots) return;
+
+      try {
+        const parsed = JSON.parse(String(jsonEl.value || ''));
+        if (!parsed || typeof parsed !== 'object') return;
+        if (!parsed.pages || typeof parsed.pages !== 'object') return;
+        if (!routePath || typeof routePath !== 'string') return;
+        if (!parsed.pages[routePath] || typeof parsed.pages[routePath] !== 'object') return;
+
+        const entry = { ...(parsed.pages[routePath] || {}) };
+        if (robots.checked) {
+          entry.robots = 'noindex,follow';
+        } else {
+          delete entry.robots;
+        }
+        parsed.pages[routePath] = entry;
+
+        jsonEl.value = JSON.stringify(parsed, null, 2);
+      } catch {
+        // ignore parse errors; user may be editing invalid JSON
+      }
+    }
+
     function seoAiSetProposed({ routePath, entry, model }) {
       seoAiProposed = { routePath, entry, model };
       const pre = document.getElementById('seo-ai-proposed');
@@ -388,11 +433,14 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || 'Failed to improve entry');
 
-        seoAiSetProposed({ routePath: data.routePath, entry: data.entry, model: data.model });
+        const nextEntry = seoAiNormalizeRobotsForImprove({ ...(data.entry || {}) });
+        seoAiProposed = { routePath: data.routePath, entry: nextEntry, model: data.model, source: 'improve' };
+        const pre = document.getElementById('seo-ai-proposed');
+        pre.textContent = JSON.stringify({ routePath: seoAiProposed.routePath, entry: seoAiProposed.entry, model: seoAiProposed.model }, null, 2);
         status.textContent = `Generated (model: ${data.model || 'unknown'})`;
         showToast('Generated improved SEO entry');
       } catch (e) {
-        status.textContent = e.message || 'Failed to improve entry';
+        status.textContent = e.message || 'Failed';
         showToast(status.textContent, 'error');
       }
     }
@@ -402,6 +450,12 @@
       if (!seoAiProposed?.routePath || !seoAiProposed?.entry) {
         showToast('No proposed entry to apply', 'error');
         return;
+      }
+
+      if (seoAiProposed.source === 'improve') {
+        seoAiProposed.entry = seoAiNormalizeRobotsForImprove({ ...(seoAiProposed.entry || {}) });
+        const pre = document.getElementById('seo-ai-proposed');
+        pre.textContent = JSON.stringify({ routePath: seoAiProposed.routePath, entry: seoAiProposed.entry, model: seoAiProposed.model }, null, 2);
       }
 
       status.textContent = 'Applying...';
@@ -452,6 +506,24 @@
         showToast(status.textContent, 'error');
       }
     }
+
+    (() => {
+      const robots = document.getElementById('seo-ai-robots-noindex');
+      const existingRoute = document.getElementById('seo-ai-existing-route');
+      if (!robots) return;
+
+      robots.addEventListener('change', () => {
+        const routePath = String(existingRoute?.value || seoAiProposed?.routePath || '').trim();
+
+        if (seoAiProposed?.source === 'improve' && seoAiProposed?.routePath === routePath && seoAiProposed?.entry) {
+          seoAiProposed.entry = seoAiNormalizeRobotsForImprove({ ...(seoAiProposed.entry || {}) });
+          const pre = document.getElementById('seo-ai-proposed');
+          pre.textContent = JSON.stringify({ routePath: seoAiProposed.routePath, entry: seoAiProposed.entry, model: seoAiProposed.model }, null, 2);
+        }
+
+        seoAiTryPatchJsonTextareaRobots(routePath);
+      });
+    })();
 
     async function saveOgSvg() {
       const status = document.getElementById('og-svg-status');
