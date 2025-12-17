@@ -118,6 +118,9 @@ function createMiddleware(options = {}) {
     router.use(express.urlencoded({ extended: true }));
   }
 
+  // Serve public static files (e.g. /og/og-default.png)
+  router.use(express.static(path.join(__dirname, "..", "public")));
+
   // Serve static files for admin views
   router.use(
     "/admin/assets",
@@ -152,6 +155,10 @@ function createMiddleware(options = {}) {
     "/api/admin/json-configs",
     require("./routes/adminJsonConfigs.routes"),
   );
+  router.use(
+    "/api/admin/seo-config",
+    require("./routes/adminSeoConfig.routes"),
+  );
   router.use("/api/admin/i18n", require("./routes/adminI18n.routes"));
   router.use("/api/admin/assets", require("./routes/adminAssets.routes"));
   router.use(
@@ -174,6 +181,32 @@ function createMiddleware(options = {}) {
   // Admin test page (protected by basic auth) - render manually to avoid view engine conflicts
   router.get("/admin/test", basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-test.ejs");
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(
+          template,
+          {
+            baseUrl: req.baseUrl,
+            endpointRegistry,
+          },
+          {
+            filename: templatePath,
+          },
+        );
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  router.get("/admin/seo-config", basicAuth, (req, res) => {
+    const templatePath = path.join(__dirname, "..", "views", "admin-seo-config.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
         console.error("Error reading template:", err);
