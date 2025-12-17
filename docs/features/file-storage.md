@@ -61,7 +61,7 @@ Uploads can be partitioned into **namespaces** (e.g. `avatars`, `marketing`, `in
 
 - **Max file size** (`maxFileSizeBytes`)
 - **Allowed content types** (`allowedContentTypes`)
-- **Key prefix** (`keyPrefix`) to organize storage keys
+- **Key prefix** (`keyPrefix`) to organize storage keys. If not set, it defaults to `assets/<namespaceKey>`.
 - **Visibility policy**
   - `defaultVisibility`: fallback when `visibility` is not provided
   - `enforceVisibility`: when true, the namespace visibility becomes the only source of truth (upload request visibility is ignored)
