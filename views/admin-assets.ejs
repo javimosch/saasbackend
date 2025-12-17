@@ -44,6 +44,19 @@
         <div class="text-sm text-blue-800" id="storage-info-content">Loading...</div>
       </div>
 
+      <div class="mb-6 bg-white rounded-lg shadow">
+        <div class="px-4 py-3 border-b">
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900">Developer helpers</h3>
+            <button class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300" onclick="copyDevSnippet()">Copy</button>
+          </div>
+          <p class="text-sm text-gray-600 mt-1">Quick snippet to retrieve assets via internal services (and public URL when available).</p>
+        </div>
+        <div class="p-4">
+          <pre id="dev-snippet" class="bg-gray-50 rounded p-3 text-sm overflow-auto"></pre>
+        </div>
+      </div>
+
       <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
         <div class="flex flex-wrap gap-2">
           <select id="filter-namespace" class="border rounded px-3 py-2 text-sm">
@@ -305,6 +318,8 @@
     let currentPage = 1;
     let totalPages = 1;
     let viewMode = 'cards';
+
+    let selectedAssetId = null;
 
     let tagsEditingAssetId = null;
 
@@ -614,8 +629,14 @@
 
         if (!response.ok) throw new Error(data?.error || 'Failed to load assets');
 
-        allAssets = data.assets || [];
+        allAssets = Array.isArray(data.assets) ? data.assets : [];
         totalPages = data.pagination?.pages || 1;
+
+        if (selectedAssetId && !allAssets.find(a => a._id === selectedAssetId)) {
+          selectedAssetId = null;
+        }
+
+        updateDevSnippet();
         renderAssets();
         renderPagination();
       } catch (error) {
@@ -625,6 +646,62 @@
             <p>Error loading assets: ${error.message}</p>
           </div>
         `;
+      }
+    }
+
+    function escapeSnippetString(str) {
+      return String(str ?? '').replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    }
+
+    function updateDevSnippet() {
+      const namespaceRaw = document.getElementById('filter-namespace')?.value || '';
+      const namespace = String(namespaceRaw).trim();
+      const tag = String(document.getElementById('filter-tag')?.value || '').trim().toLowerCase();
+
+      const selected = selectedAssetId ? allAssets.find(a => a._id === selectedAssetId) : null;
+      const assetId = selected?._id || '<assetId>';
+      const assetKey = selected?.key || '<assetKey>';
+      const publicUrl = selected?.publicUrl ? `${API_BASE}${selected.publicUrl}` : null;
+
+      const snippet =
+`const saasbackend = require('saasbackend');
+
+// Works when your host app mounts saasbackend.middleware(...) and shares the same process/DB connection
+const { assets } = saasbackend.services;
+
+// 1) List assets (metadata)
+const { assets: list } = await assets.listAssets({
+  namespace: ${namespace ? `'${escapeSnippetString(namespace)}'` : 'undefined'},
+  tag: ${tag ? `'${escapeSnippetString(tag)}'` : 'undefined'},
+  page: 1,
+  limit: 50,
+});
+
+// 2) Get one asset (metadata)
+const asset = await assets.getAssetById('${escapeSnippetString(assetId)}');
+
+// 3) Get raw bytes (Buffer) for an asset
+const { body, contentType } = await assets.getAssetBytesById('${escapeSnippetString(assetId)}');
+
+// 4) Or fetch by storage key
+const { body: body2 } = await assets.getAssetBytesByKey('${escapeSnippetString(assetKey)}');
+
+${publicUrl ? `// Public URL (works only when asset.visibility === 'public')
+// ${escapeSnippetString(publicUrl)}
+
+` : ''}`;
+
+      const el = document.getElementById('dev-snippet');
+      if (el) el.textContent = snippet;
+    }
+
+    async function copyDevSnippet() {
+      try {
+        const el = document.getElementById('dev-snippet');
+        await navigator.clipboard.writeText(el?.textContent || '');
+        showToast('Copied');
+      } catch {
+        showToast('Copy failed', 'error');
       }
     }
 
@@ -666,10 +743,12 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               ${allAssets.map((asset) => {
+                const isImage = asset.contentType?.startsWith('image/');
                 const tags = Array.isArray(asset.tags) ? asset.tags : [];
                 const tagsText = tags.length ? tags.join(', ') : '';
+
                 return `
-                  <tr>
+                  <tr class="hover:bg-gray-50 cursor-pointer" onclick="selectAsset('${escapeJs(asset._id)}')">
                     <td class="px-4 py-2 text-sm max-w-xs truncate" title="${escapeHtml(asset.originalName)}">${escapeHtml(asset.originalName)}</td>
                     <td class="px-4 py-2 text-sm font-mono">${escapeHtml(asset.namespace || 'default')}</td>
                     <td class="px-4 py-2 text-sm">${escapeHtml(asset.contentType || '')}</td>
@@ -680,25 +759,25 @@
                     <td class="px-4 py-2 text-sm">${escapeHtml(tagsText)}</td>
                     <td class="px-4 py-2 text-right">
                       <div class="flex justify-end gap-2">
-                        <button onclick="openTagsModal('${escapeJs(asset._id)}')" class="text-gray-700 hover:text-gray-900" title="Edit tags">
+                        <button onclick="event.stopPropagation(); openTagsModal('${escapeJs(asset._id)}')" class="text-gray-700 hover:text-gray-900" title="Edit tags">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M3 11l6.586-6.586a2 2 0 012.828 0L21 13a2 2 0 010 2.828l-6.586 6.586a2 2 0 01-2.828 0L3 13v-2z"></path>
                           </svg>
                         </button>
                         ${asset.visibility === 'public' && asset.publicUrl ? `
-                          <button onclick="copyUrl('${escapeJs(API_BASE + asset.publicUrl)}')" class="text-blue-600 hover:text-blue-800" title="Copy URL">
+                          <button onclick="event.stopPropagation(); copyUrl('${escapeJs(API_BASE + asset.publicUrl)}')" class="text-blue-600 hover:text-blue-800" title="Copy URL">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
                             </svg>
                           </button>
                         ` : ''}
-                        <button onclick="toggleVisibility('${escapeJs(asset._id)}', '${asset.visibility}')" class="text-yellow-600 hover:text-yellow-800" title="Toggle visibility">
+                        <button onclick="event.stopPropagation(); toggleVisibility('${escapeJs(asset._id)}', '${asset.visibility}')" class="text-yellow-600 hover:text-yellow-800" title="Toggle visibility">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                           </svg>
                         </button>
-                        <button onclick="deleteAsset('${escapeJs(asset._id)}')" class="text-red-600 hover:text-red-800" title="Delete">
+                        <button onclick="event.stopPropagation(); deleteAsset('${escapeJs(asset._id)}')" class="text-red-600 hover:text-red-800" title="Delete">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                           </svg>
@@ -707,10 +786,11 @@
                     </td>
                   </tr>
                 `;
-              }).join('')}
-            </tbody>
-          </table>
-        `;
+              }).join('')
+            }
+          </tbody>
+        </table>
+      `;
         return;
       }
 
@@ -735,7 +815,7 @@
         }
 
         return `
-          <div class="bg-white rounded-lg shadow p-4">
+          <div class="bg-white rounded-lg shadow p-4" onclick="selectAsset('${escapeJs(asset._id)}')">
             ${thumbnail}
             <div class="mt-3">
               <h4 class="font-medium text-gray-900 truncate" title="${escapeHtml(asset.originalName)}">${escapeHtml(asset.originalName)}</h4>
@@ -744,25 +824,25 @@
               <div class="flex items-center justify-between mt-2">
                 <span class="px-2 py-1 text-xs rounded ${asset.visibility === 'public' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${asset.visibility}</span>
                 <div class="flex gap-2">
-                  <button onclick="openTagsModal('${escapeJs(asset._id)}')" class="text-gray-700 hover:text-gray-900" title="Edit tags">
+                  <button onclick="event.stopPropagation(); openTagsModal('${escapeJs(asset._id)}')" class="text-gray-700 hover:text-gray-900" title="Edit tags">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M3 11l6.586-6.586a2 2 0 012.828 0L21 13a2 2 0 010 2.828l-6.586 6.586a2 2 0 01-2.828 0L3 13v-2z"></path>
                     </svg>
                   </button>
                   ${asset.visibility === 'public' && asset.publicUrl ? `
-                    <button onclick="copyUrl('${escapeJs(API_BASE + asset.publicUrl)}')" class="text-blue-600 hover:text-blue-800" title="Copy URL">
+                    <button onclick="event.stopPropagation(); copyUrl('${escapeJs(API_BASE + asset.publicUrl)}')" class="text-blue-600 hover:text-blue-800" title="Copy URL">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
                       </svg>
                     </button>
                   ` : ''}
-                  <button onclick="toggleVisibility('${escapeJs(asset._id)}', '${asset.visibility}')" class="text-yellow-600 hover:text-yellow-800" title="Toggle visibility">
+                  <button onclick="event.stopPropagation(); toggleVisibility('${escapeJs(asset._id)}', '${asset.visibility}')" class="text-yellow-600 hover:text-yellow-800" title="Toggle visibility">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                     </svg>
                   </button>
-                  <button onclick="deleteAsset('${escapeJs(asset._id)}')" class="text-red-600 hover:text-red-800" title="Delete">
+                  <button onclick="event.stopPropagation(); deleteAsset('${escapeJs(asset._id)}')" class="text-red-600 hover:text-red-800" title="Delete">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                     </svg>
@@ -773,6 +853,11 @@
           </div>
         `;
       }).join('');
+    }
+
+    function selectAsset(id) {
+      selectedAssetId = id;
+      updateDevSnippet();
     }
 
     function renderPagination() {

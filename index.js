@@ -322,6 +322,7 @@ module.exports = {
     audit: require("./src/services/audit.service"),
     globalSettings: require("./src/services/globalSettings.service"),
     jsonConfigs: require("./src/services/jsonConfigs.service"),
+    assets: require("./src/services/assets.service"),
   },
   models: {
     EmailLog: require("./src/models/EmailLog"),
