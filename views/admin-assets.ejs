@@ -40,19 +40,29 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div id="storage-info" class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4">
-        <h3 class="font-semibold text-blue-900 mb-2">📦 Storage Info</h3>
-        <div class="text-sm text-blue-800" id="storage-info-content">Loading...</div>
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold text-blue-900">📦 Storage Info</h3>
+          <button id="storage-info-toggle" type="button" class="px-3 py-2 bg-white border rounded hover:bg-blue-100 text-sm" onclick="toggleStorageInfo()">
+            Show
+          </button>
+        </div>
+        <div id="storage-info-body" class="hidden mt-2">
+          <div class="text-sm text-blue-800" id="storage-info-content">Loading...</div>
+        </div>
       </div>
 
       <div class="mb-6 bg-white rounded-lg shadow">
         <div class="px-4 py-3 border-b">
           <div class="flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-900">Developer helpers</h3>
-            <button class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300" onclick="copyDevSnippet()">Copy</button>
+            <div class="flex items-center gap-2">
+              <button id="dev-helpers-toggle" type="button" class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300" onclick="toggleDevHelpers()">Show</button>
+              <button class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300" onclick="copyDevSnippet()">Copy</button>
+            </div>
           </div>
           <p class="text-sm text-gray-600 mt-1">Quick snippet to retrieve assets via internal services (and public URL when available).</p>
         </div>
-        <div class="p-4">
+        <div id="dev-helpers-body" class="hidden p-4">
           <pre id="dev-snippet" class="bg-gray-50 rounded p-3 text-sm overflow-auto"></pre>
         </div>
       </div>
@@ -98,15 +108,15 @@
         </div>
       </div>
 
-      <div id="assets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="text-center py-12 col-span-full">
-          <p class="text-gray-600">Loading assets...</p>
-        </div>
-      </div>
-
       <div id="namespaces-summary" class="mt-8">
         <h3 class="text-lg font-semibold text-gray-900 mb-3">Namespaces</h3>
         <div id="namespaces-summary-content" class="text-sm text-gray-600">Loading namespaces...</div>
+      </div>
+
+      <div id="assets-container" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="text-center py-12 col-span-full">
+          <p class="text-gray-600">Loading assets...</p>
+        </div>
       </div>
 
       <div id="pagination" class="mt-6 flex justify-center gap-2"></div>
