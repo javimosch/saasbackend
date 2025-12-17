@@ -25,6 +25,49 @@
                 </div>
             </header>
 
+            <section class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+                <h2 class="text-xl font-bold">60-second quickstart (npm)</h2>
+                <p class="mt-2 text-slate-300">
+                    SaasBackend is an npm package. Mount it into your existing Express app (recommended).
+                </p>
+                <pre class="mt-4 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-200"><code>npm i saasbackend
+
+# .env (minimum)
+MONGODB_URI=mongodb://localhost:27017/saasbackend
+JWT_ACCESS_SECRET=replace-me
+JWT_REFRESH_SECRET=replace-me
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin
+
+# app.js
+const express = require('express');
+const { middleware } = require('saasbackend');
+
+const app = express();
+app.use('/saas', middleware({ mongodbUri: process.env.MONGODB_URI }));
+app.listen(3000);
+
+# verify
+curl http://localhost:3000/saas/health</code></pre>
+                <div class="mt-4 flex flex-col sm:flex-row gap-3">
+                    <a href="documentation.html#core-configuration" class="inline-flex items-center justify-center rounded-lg bg-white text-slate-900 px-5 py-3 font-semibold hover:bg-slate-200">
+                        Core configuration
+                    </a>
+                    <a href="documentation.html#getting-started" class="inline-flex items-center justify-center rounded-lg border border-slate-500 px-5 py-3 font-semibold hover:bg-slate-800">
+                        Getting started
+                    </a>
+                    <a href="documentation.html#integration-patterns" class="inline-flex items-center justify-center rounded-lg border border-slate-500 px-5 py-3 font-semibold hover:bg-slate-800">
+                        Integration patterns
+                    </a>
+                    <a href="documentation.html#json-configs" class="inline-flex items-center justify-center rounded-lg border border-slate-500 px-5 py-3 font-semibold hover:bg-slate-800">
+                        JSON configs
+                    </a>
+                    <a href="documentation.html#file-storage" class="inline-flex items-center justify-center rounded-lg border border-slate-500 px-5 py-3 font-semibold hover:bg-slate-800">
+                        File storage
+                    </a>
+                </div>
+            </section>
+
             <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
                     <h2 class="text-xl font-bold">Feature docs</h2>

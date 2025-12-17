@@ -19,17 +19,29 @@ Mount SaasBackend under `/saas`:
 
 ```js
 const express = require('express');
-const { middleware } = require('./index');
+const { middleware } = require('saasbackend');
 
 const app = express();
 
 app.use('/saas', middleware({
   mongodbUri: process.env.MONGODB_URI,
-  corsOrigin: '*'
+  corsOrigin: process.env.CORS_ORIGIN || '*'
 }));
 
 app.listen(3000);
 ```
+
+Verify:
+
+```bash
+curl http://localhost:3000/saas/health
+curl -i http://localhost:3000/saas/api/auth/me
+```
+
+Notes:
+
+- `GET /saas/health` should return JSON with `status: "ok"`.
+- `GET /saas/api/auth/me` should return `401` if you did not send a JWT (this confirms routing is correct).
 
 ## Configuration
 
@@ -72,20 +84,6 @@ Example (when mounted at `/saas`):
 
 Admin endpoints and admin UI are protected by basic auth.
 If you mount under a prefix, the protection still applies (for example `/saas/admin/*`).
-
-## Quick sanity checks
-
-If you want to validate that middleware mode is wired correctly:
-
-```bash
-node validate-modes.js
-```
-
-To run the middleware test harness:
-
-```bash
-PORT=4500 node test-middleware.js
-```
 
 ## Troubleshooting
 

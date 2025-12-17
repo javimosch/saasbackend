@@ -9,13 +9,13 @@ Middleware mode is the recommended integration approach. Standalone mode may be 
 ```js
 require('dotenv').config();
 const express = require('express');
-const { middleware } = require('./index');
+const { middleware } = require('saasbackend');
 
 const app = express();
 
 // Important: do NOT apply express.json() to the Stripe webhook path.
 // Safest approach: mount SaasBackend before your global body parsers.
-app.use(middleware({
+app.use('/saas', middleware({
   mongodbUri: process.env.MONGODB_URI,
   corsOrigin: process.env.CORS_ORIGIN || '*'
 }));
@@ -38,6 +38,8 @@ Examples:
 - `GET /saas/api/auth/me`
 - `POST /saas/api/billing/create-checkout-session`
 - `POST /saas/api/stripe/webhook`
+- `GET /saas/api/json-configs/:slug`
+- `GET /saas/public/assets/*`
 - `GET /saas/admin/test`
 
 ## Stripe webhooks: raw body gotcha
@@ -53,6 +55,10 @@ SaasBackend registers webhook handlers using `express.raw({ type: 'application/j
 
 - If your parent app uses `app.use(express.json())` globally, it can break Stripe signature validation.
 - Prefer mounting SaasBackend **before** your global JSON body parser.
+
+When mounting under a prefix (example `/saas`):
+
+- Webhook paths become `/saas/api/stripe/webhook` and `/saas/api/stripe-webhook`.
 
 ### If you must keep global body parsing
 

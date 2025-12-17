@@ -46,6 +46,8 @@ Next steps:
 - Configure auth and generate tokens: `docs/features/auth-and-jwt.md`
 - Configure admin access: `docs/features/admin-panel.md`
 - Configure Stripe billing: `docs/features/billing-and-subscriptions.md`
+- JSON configs: `docs/features/json-configs.md`
+- File storage (assets): `docs/features/file-storage.md`
 
 ## Required configuration
 
