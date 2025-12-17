@@ -112,14 +112,28 @@ function startServer(options = {}) {
     "/api/admin/feature-flags",
     require("./src/routes/adminFeatureFlags.routes"),
   );
+  app.use(
+    "/api/admin/json-configs",
+    require("./src/routes/adminJsonConfigs.routes"),
+  );
   app.use("/api/admin/i18n", require("./src/routes/adminI18n.routes"));
+  app.use("/api/admin/assets", require("./src/routes/adminAssets.routes"));
+  app.use(
+    "/api/admin/upload-namespaces",
+    require("./src/routes/adminUploadNamespaces.routes"),
+  );
   app.use("/api/settings", require("./src/routes/globalSettings.routes"));
   app.use("/api/feature-flags", require("./src/routes/featureFlags.routes"));
+  app.use("/api/json-configs", require("./src/routes/jsonConfigs.routes"));
+  app.use("/api/assets", require("./src/routes/assets.routes"));
   app.use("/api/i18n", require("./src/routes/i18n.routes"));
   app.use("/api", require("./src/routes/notifications.routes"));
   app.use("/api/user", require("./src/routes/user.routes"));
   app.use("/api/orgs", require("./src/routes/org.routes"));
   app.use("/api/invites", require("./src/routes/invite.routes"));
+
+  // Public assets proxy
+  app.use("/public/assets", require("./src/routes/publicAssets.routes"));
 
   // Admin test page (protected by basic auth)
   app.get("/admin/test", basicAuth, (req, res) => {
@@ -164,6 +178,16 @@ function startServer(options = {}) {
   // Admin feature flags page (protected by basic auth)
   app.get("/admin/feature-flags", basicAuth, (req, res) => {
     res.render("admin-feature-flags", { baseUrl: "", endpointRegistry });
+  });
+
+  // Admin JSON configs page (protected by basic auth)
+  app.get("/admin/json-configs", basicAuth, (req, res) => {
+    res.render("admin-json-configs", { baseUrl: "", endpointRegistry });
+  });
+
+  // Admin assets page (protected by basic auth)
+  app.get("/admin/assets", basicAuth, (req, res) => {
+    res.render("admin-assets", { baseUrl: "", endpointRegistry });
   });
 
   // Admin global settings page (protected by basic auth)
@@ -297,10 +321,12 @@ module.exports = {
     i18n: require("./src/services/i18n.service"),
     audit: require("./src/services/audit.service"),
     globalSettings: require("./src/services/globalSettings.service"),
+    jsonConfigs: require("./src/services/jsonConfigs.service"),
   },
   models: {
     EmailLog: require("./src/models/EmailLog"),
     GlobalSetting: require("./src/models/GlobalSetting"),
+    JsonConfig: require("./src/models/JsonConfig"),
     User: require("./src/models/User"),
     Organization: require("./src/models/Organization"),
     OrganizationMember: require("./src/models/OrganizationMember"),
@@ -313,5 +339,6 @@ module.exports = {
     auth: require("./src/middleware/auth"),
     org: require("./src/middleware/org"),
     i18n: require("./src/services/i18n.service"),
+    jsonConfigs: require("./src/services/jsonConfigs.service"),
   },
 };

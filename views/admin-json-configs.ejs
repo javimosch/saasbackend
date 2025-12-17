@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSON Configs - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .toast {
+        animation: slideIn 0.3s ease-out;
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      .fade-out {
+        animation: fadeOut 0.3s ease-out forwards;
+      }
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100">
+    <div class="min-h-screen">
+      <div class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900">JSON Configs</h1>
+              <p class="text-sm text-gray-600 mt-1">Manage validated JSON blobs with optional public access and TTL caching.</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <a href="<%= baseUrl %>/admin/test" class="text-blue-600 hover:text-blue-800">← Back to API Test</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
+          <button id="btnReload" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center">
+            Refresh
+          </button>
+          <button id="btnNew" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center">
+            New Config
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-lg shadow">
+            <div class="px-4 py-3 border-b">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-lg font-semibold text-gray-900">Configs</h2>
+                  <p class="text-sm text-gray-600">Click a row to edit.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Public</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">TTL</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Updated</th>
+                  </tr>
+                </thead>
+                <tbody id="rows" class="bg-white divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg shadow">
+            <div class="px-4 py-3 border-b">
+              <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900" id="editorTitle">Editor</h2>
+                <div class="flex gap-2">
+                  <button class="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700" id="btnDelete" style="display:none;">Delete</button>
+                  <button class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" id="btnSave">Save</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-4">
+              <div class="mb-4">
+                <label for="title" class="block text-sm font-medium mb-2">Title</label>
+                <input id="title" type="text" class="w-full border rounded px-3 py-2" placeholder="e.g. Homepage copy" />
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Slug (readonly)</label>
+                <div class="flex gap-2">
+                  <input id="slug" type="text" class="w-full border rounded px-3 py-2" readonly />
+                  <button class="px-3 py-2 bg-gray-800 text-white rounded hover:bg-gray-900 whitespace-nowrap" id="btnRegenerate" title="Regenerate slug">Regenerate</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Slug stays stable unless you click regenerate.</p>
+              </div>
+
+              <div class="mb-4">
+                <label class="flex items-center">
+                  <input id="publicEnabled" type="checkbox" class="mr-2" />
+                  <span class="text-sm font-medium">Public endpoint enabled</span>
+                </label>
+                <div class="text-xs text-gray-600 mt-1" id="publicUrl" style="display:none;"></div>
+              </div>
+
+              <div class="mb-4">
+                <label for="cacheTtlSeconds" class="block text-sm font-medium mb-2">Cache TTL (seconds)</label>
+                <div class="flex gap-2">
+                  <input id="cacheTtlSeconds" type="number" min="0" step="1" value="0" class="w-full border rounded px-3 py-2" />
+                  <button class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 whitespace-nowrap" id="btnClearCache">Clear cache</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">0 disables server-side cache (default).</p>
+              </div>
+
+              <div class="mb-4">
+                <label for="jsonRaw" class="block text-sm font-medium mb-2">JSON (validated on save)</label>
+                <textarea id="jsonRaw" spellcheck="false" class="w-full border rounded px-3 py-2 font-mono text-sm" rows="10" placeholder="{\n  \"hello\": \"world\"\n}"></textarea>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="block text-sm font-medium">Internal helper snippet</label>
+                  <button class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300" id="btnCopy">Copy</button>
+                </div>
+                <pre id="snippet" class="bg-gray-50 rounded p-3 text-sm overflow-auto"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+    <script>
+      const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
+      let items = [];
+      let selectedId = null;
+
+      function $(id) { return document.getElementById(id); }
+
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast px-6 py-4 rounded-lg shadow-lg text-white ${
+          type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        }`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.classList.add('fade-out');
+          setTimeout(() => toast.remove(), 300);
+        }, 2500);
+      }
+
+      function formatDate(iso) {
+        if (!iso) return '';
+        try {
+          const d = new Date(iso);
+          return d.toLocaleString();
+        } catch {
+          return String(iso);
+        }
+      }
+
+      function setSelected(item) {
+        selectedId = item ? item._id : null;
+        $('editorTitle').textContent = item ? `Editing: ${item.title}` : 'New config';
+        $('btnDelete').style.display = item ? 'inline-block' : 'none';
+
+        $('title').value = item?.title || '';
+        $('slug').value = item?.slug || '';
+        $('publicEnabled').checked = Boolean(item?.publicEnabled);
+        $('cacheTtlSeconds').value = String(item?.cacheTtlSeconds ?? 0);
+        $('jsonRaw').value = item?.jsonRaw || '';
+
+        updatePublicUrl();
+        updateSnippet();
+      }
+
+      function updatePublicUrl() {
+        const enabled = $('publicEnabled').checked;
+        const slug = $('slug').value;
+        const el = $('publicUrl');
+        if (!enabled || !slug) {
+          el.style.display = 'none';
+          el.textContent = '';
+          return;
+        }
+        const url = `${API_BASE}/api/json-configs/${encodeURIComponent(slug)}`;
+        el.style.display = 'block';
+        el.innerHTML = `<span class="text-gray-500">Public URL:</span> <a href="${url}" class="text-blue-600 hover:text-blue-800" target="_blank" rel="noreferrer">${url}</a>`;
+      }
+
+      function updateSnippet() {
+        const slug = $('slug').value || '<slug>';
+        const snippet =
+`const saasbackend = require('saasbackend');\n\n// Works when your host app mounts saasbackend.middleware(...) and shares the same process/DB connection\nconst { getJsonConfig } = saasbackend.services.jsonConfigs;\n\nconst cfg = await getJsonConfig('${slug}', {\n  bypassCache: false,\n});\n`;
+        $('snippet').textContent = snippet;
+      }
+
+      async function loadList() {
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/json-configs`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to load');
+
+          items = Array.isArray(data?.items) ? data.items : [];
+          renderList();
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      function renderList() {
+        const tbody = $('rows');
+        tbody.innerHTML = '';
+
+        if (!items.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="5" class="px-4 py-4 text-sm text-gray-500">No configs yet.</td>`;
+          tbody.appendChild(tr);
+          return;
+        }
+
+        for (const it of items) {
+          const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          tr.className = 'hover:bg-gray-50';
+          tr.innerHTML = `
+            <td class="px-4 py-2 text-sm text-gray-900">${escapeHtml(it.title || '')}</td>
+            <td class="px-4 py-2 text-sm"><code class="text-gray-800">${escapeHtml(it.slug || '')}</code></td>
+            <td class="px-4 py-2 text-sm text-gray-900">${it.publicEnabled ? 'yes' : 'no'}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">${Number(it.cacheTtlSeconds || 0)}</td>
+            <td class="px-4 py-2 text-sm text-gray-500">${escapeHtml(formatDate(it.updatedAt))}</td>
+          `;
+          tr.addEventListener('click', () => openEditor(it._id));
+          tbody.appendChild(tr);
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      async function openEditor(id) {
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/json-configs/${encodeURIComponent(id)}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to load');
+          setSelected(data.item);
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      async function save() {
+        const body = {
+          title: $('title').value,
+          publicEnabled: $('publicEnabled').checked,
+          cacheTtlSeconds: Number($('cacheTtlSeconds').value || 0),
+          jsonRaw: $('jsonRaw').value,
+        };
+
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/json-configs${selectedId ? `/${encodeURIComponent(selectedId)}` : ''}`, {
+            method: selectedId ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Save failed');
+
+          showToast('Saved');
+          setSelected(data.item);
+          await loadList();
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      async function regenerateSlug() {
+        if (!selectedId) return;
+        if (!confirm('Regenerate slug? This changes the public URL and internal access key.')) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/json-configs/${encodeURIComponent(selectedId)}/regenerate-slug`, { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to regenerate');
+
+          showToast('Slug regenerated');
+          setSelected(data.item);
+          await loadList();
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      async function clearCache() {
+        if (!selectedId) return;
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/json-configs/${encodeURIComponent(selectedId)}/clear-cache`, { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to clear cache');
+          showToast('Cache cleared');
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      async function remove() {
+        if (!selectedId) return;
+        if (!confirm('Delete this JSON config? This cannot be undone.')) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/json-configs/${encodeURIComponent(selectedId)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to delete');
+
+          showToast('Deleted');
+          setSelected(null);
+          await loadList();
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      async function copySnippet() {
+        try {
+          await navigator.clipboard.writeText($('snippet').textContent);
+          showToast('Copied');
+        } catch {
+          showToast('Copy failed', 'error');
+        }
+      }
+
+      $('btnReload').addEventListener('click', loadList);
+      $('btnNew').addEventListener('click', () => setSelected(null));
+      $('btnSave').addEventListener('click', save);
+      $('btnDelete').addEventListener('click', remove);
+      $('btnRegenerate').addEventListener('click', regenerateSlug);
+      $('btnClearCache').addEventListener('click', clearCache);
+      $('btnCopy').addEventListener('click', copySnippet);
+
+      $('publicEnabled').addEventListener('change', updatePublicUrl);
+      $('slug').addEventListener('input', () => { updatePublicUrl(); updateSnippet(); });
+
+      (async function init() {
+        setSelected(null);
+        await loadList();
+      })();
+    </script>
+  </body>
+</html>
