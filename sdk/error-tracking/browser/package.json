@@ -1,7 +1,6 @@
 {
-  "name": "@saasbackend/sdk/error-tracking/browser",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@saasbackend/error-tracking-browser-sdk",
+  "version": "1.0.0",
   "type": "module",
   "exports": {
     ".": {
