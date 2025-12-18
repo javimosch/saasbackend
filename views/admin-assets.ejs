@@ -135,6 +135,8 @@
         </div>
       </div>
 
+      <div id="assets-bulk-actions" class="mt-6"></div>
+
       <div id="assets-container" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div class="text-center py-12 col-span-full">
           <p class="text-gray-600">Loading assets...</p>
@@ -142,6 +144,33 @@
       </div>
 
       <div id="pagination" class="mt-6 flex justify-center gap-2"></div>
+    </div>
+  </div>
+
+  <div id="bulk-move-namespace-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <h3 class="text-xl font-bold">Move assets</h3>
+          <p class="text-xs text-gray-600 mt-1" id="bulk-move-namespace-subtitle"></p>
+        </div>
+        <button onclick="closeBulkMoveNamespaceModal()" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-sm font-medium mb-1">Target namespace</label>
+        <select id="bulk-move-namespace-select" class="w-full border rounded px-3 py-2"></select>
+        <p class="text-xs text-gray-500 mt-1">This moves the stored object to a new key under the selected namespace.</p>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeBulkMoveNamespaceModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Cancel</button>
+        <button type="button" id="bulk-move-namespace-confirm" onclick="confirmBulkMoveNamespace()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Move</button>
+      </div>
     </div>
   </div>
 

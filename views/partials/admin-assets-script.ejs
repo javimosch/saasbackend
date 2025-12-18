@@ -12,6 +12,8 @@
 
     let selectedAssetId = null;
 
+    let selectedAssetIds = new Set();
+
     let tagsEditingAssetId = null;
 
     let namespaceEditorMode = 'create';
@@ -795,6 +797,184 @@
       return `${base}${base.includes('?') ? '&' : '?'}v=${encodeURIComponent(String(ts))}`;
     }
 
+    function normalizeAssetId(id) {
+      const v = String(id || '').trim();
+      return v || null;
+    }
+
+    function isAssetSelected(id) {
+      const v = normalizeAssetId(id);
+      if (!v) return false;
+      return selectedAssetIds.has(v);
+    }
+
+    function toggleAssetSelection(id, checked) {
+      const v = normalizeAssetId(id);
+      if (!v) return;
+      if (checked) {
+        selectedAssetIds.add(v);
+      } else {
+        selectedAssetIds.delete(v);
+      }
+      renderBulkActionsToolbar();
+    }
+
+    function clearBulkSelection() {
+      selectedAssetIds = new Set();
+      renderAssets();
+    }
+
+    function toggleSelectAllVisible(checked) {
+      if (!Array.isArray(allAssets)) return;
+      for (const asset of allAssets) {
+        const v = normalizeAssetId(asset?._id);
+        if (!v) continue;
+        if (checked) selectedAssetIds.add(v);
+        else selectedAssetIds.delete(v);
+      }
+      renderAssets();
+    }
+
+    function getSelectedAssetsFromCurrentPage() {
+      const ids = selectedAssetIds;
+      if (!ids || ids.size === 0) return [];
+      return (allAssets || []).filter((a) => ids.has(String(a?._id || '')));
+    }
+
+    function renderBulkActionsToolbar() {
+      const container = document.getElementById('assets-bulk-actions');
+      if (!container) return;
+
+      if (viewMode !== 'list') {
+        container.innerHTML = '';
+        return;
+      }
+
+      const count = selectedAssetIds.size;
+      if (!count) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="mb-3 bg-white rounded-lg shadow border p-3 flex flex-wrap items-center justify-between gap-2">
+          <div class="text-sm text-gray-700"><strong>${count}</strong> selected</div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm" onclick="copySelectedPublicUrls()">Copy public URLs</button>
+            <button type="button" class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm" onclick="openBulkMoveNamespaceModal()">Move namespace</button>
+            <button type="button" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm" onclick="clearBulkSelection()">Clear</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function copySelectedPublicUrls() {
+      try {
+        const selected = getSelectedAssetsFromCurrentPage();
+        if (!selected.length) {
+          showToast('No assets selected', 'error');
+          return;
+        }
+
+        const urls = [];
+        let skipped = 0;
+
+        for (const asset of selected) {
+          const url = asset?.visibility === 'public' ? buildAssetPublicUrl(asset) : null;
+          if (url) urls.push(url);
+          else skipped += 1;
+        }
+
+        if (!urls.length) {
+          showToast('No public URLs found in selection', 'error');
+          return;
+        }
+
+        await navigator.clipboard.writeText(urls.join('\n'));
+        showToast(skipped ? `Copied ${urls.length} URL(s). Skipped ${skipped} non-public asset(s).` : `Copied ${urls.length} URL(s).`);
+      } catch (e) {
+        showToast(e?.message ? String(e.message) : 'Failed to copy URLs', 'error');
+      }
+    }
+
+    function openBulkMoveNamespaceModal() {
+      const modal = document.getElementById('bulk-move-namespace-modal');
+      const select = document.getElementById('bulk-move-namespace-select');
+      const subtitle = document.getElementById('bulk-move-namespace-subtitle');
+      if (!modal || !select) return;
+
+      const count = selectedAssetIds.size;
+      if (!count) {
+        showToast('No assets selected', 'error');
+        return;
+      }
+
+      if (subtitle) subtitle.textContent = `${count} asset(s) selected`;
+
+      const items = Array.isArray(namespaces) ? namespaces : [];
+      select.innerHTML = items
+        .filter((n) => n && n.key)
+        .map((n) => `<option value="${escapeHtml(String(n.key))}">${escapeHtml(String(n.key))}${n.enabled === false ? ' (disabled)' : ''}</option>`)
+        .join('');
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeBulkMoveNamespaceModal() {
+      const modal = document.getElementById('bulk-move-namespace-modal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+    }
+
+    async function confirmBulkMoveNamespace() {
+      const btn = document.getElementById('bulk-move-namespace-confirm');
+      const select = document.getElementById('bulk-move-namespace-select');
+      try {
+        const ids = Array.from(selectedAssetIds);
+        if (!ids.length) {
+          showToast('No assets selected', 'error');
+          return;
+        }
+        const targetNamespace = String(select?.value || '').trim();
+        if (!targetNamespace) {
+          showToast('Select a target namespace', 'error');
+          return;
+        }
+
+        if (!confirm(`Move ${ids.length} asset(s) to namespace '${targetNamespace}'?`)) return;
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Moving...';
+        }
+
+        const res = await fetch(`${API_BASE}/api/admin/assets/bulk/move-namespace`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assetIds: ids, targetNamespace }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Bulk move failed');
+
+        const failedCount = Array.isArray(data?.failed) ? data.failed.length : 0;
+        const msg = failedCount
+          ? `Moved ${data?.moved || 0}, skipped ${data?.skipped || 0}, failed ${failedCount}`
+          : `Moved ${data?.moved || 0}, skipped ${data?.skipped || 0}`;
+
+        showToast(msg);
+        closeBulkMoveNamespaceModal();
+        clearBulkSelection();
+        await loadAssets();
+      } catch (e) {
+        showToast(e?.message ? String(e.message) : 'Bulk move failed', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Move';
+        }
+      }
+    }
+
     let replacingAssetId = null;
 
     function setReplaceStatus(text, kind) {
@@ -1230,6 +1410,8 @@ ${publicUrl ? `// Public URL (works only when asset.visibility === 'public')
     function renderAssets() {
       const container = document.getElementById('assets-container');
 
+      renderBulkActionsToolbar();
+
       if (viewMode === 'list') {
         container.className = 'bg-white rounded-lg shadow overflow-x-auto';
       } else {
@@ -1250,6 +1432,9 @@ ${publicUrl ? `// Public URL (works only when asset.visibility === 'public')
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  <input type="checkbox" onclick="event.stopPropagation(); toggleSelectAllVisible(this.checked)" ${allAssets.length && allAssets.every(a => isAssetSelected(a._id)) ? 'checked' : ''}>
+                </th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Namespace</th>
@@ -1278,9 +1463,13 @@ ${publicUrl ? `// Public URL (works only when asset.visibility === 'public')
                 const shortId = fullId ? fullId.slice(-4) : '';
                 const updatedAt = asset.updatedAt || asset.createdAt;
                 const updatedAtText = formatDateTime(updatedAt);
+                const checked = isAssetSelected(asset._id);
 
                 return `
                   <tr class="hover:bg-gray-50 cursor-pointer" onclick="selectAsset('${escapeJs(asset._id)}')" ondblclick="event.stopPropagation(); showPreview('${escapeJs(asset._id)}')">
+                    <td class="px-4 py-2 text-sm" onclick="event.stopPropagation();">
+                      <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleAssetSelection('${escapeJs(asset._id)}', this.checked)">
+                    </td>
                     <td class="px-4 py-2 text-sm font-mono whitespace-nowrap">
                       <span title="${escapeHtml(fullId)}">…${escapeHtml(shortId)}</span>
                       <button onclick="event.stopPropagation(); copyAssetId('${escapeJs(fullId)}')" class="ml-2 text-blue-600 hover:text-blue-800 text-xs" title="Copy full asset id">copy</button>
@@ -1432,6 +1621,7 @@ ${publicUrl ? `// Public URL (works only when asset.visibility === 'public')
 
     function goToPage(page) {
       currentPage = page;
+      clearBulkSelection();
       loadAssets();
     }
 

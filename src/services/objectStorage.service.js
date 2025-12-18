@@ -334,6 +334,46 @@ const deleteObjectS3 = async ({ key }) => {
   return true;
 };
 
+const moveObjectFs = async ({ sourceKey, destKey }) => {
+  const sourcePath = buildFsPath(sourceKey);
+  const destPath = buildFsPath(destKey);
+  if (!fs.existsSync(sourcePath)) {
+    const err = new Error('Source object not found');
+    err.code = 'NOT_FOUND';
+    throw err;
+  }
+  ensureDir(path.dirname(destPath));
+  fs.copyFileSync(sourcePath, destPath);
+  fs.unlinkSync(sourcePath);
+  return true;
+};
+
+const moveObjectS3 = async ({ sourceKey, destKey }) => {
+  const client = await getS3Client();
+  if (!client) {
+    const err = new Error('S3 is not configured');
+    err.code = 'S3_NOT_CONFIGURED';
+    throw err;
+  }
+
+  await ensureS3BucketExists();
+  const config = await getS3Config();
+  const { CopyObjectCommand, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+
+  await client.send(new CopyObjectCommand({
+    Bucket: config.bucket,
+    CopySource: `${encodeURIComponent(config.bucket)}/${encodeURIComponent(sourceKey)}`,
+    Key: destKey,
+  }));
+
+  await client.send(new DeleteObjectCommand({
+    Bucket: config.bucket,
+    Key: sourceKey,
+  }));
+
+  return true;
+};
+
 const objectExistsS3 = async ({ key }) => {
   const client = await getS3Client();
   if (!client) return false;
@@ -376,6 +416,19 @@ const deleteObject = async ({ key, backend }) => {
     return deleteObjectS3({ key });
   }
   return deleteObjectFs({ key });
+};
+
+const moveObject = async ({ sourceKey, destKey, backend }) => {
+  const target = backend || await getActiveBackend();
+  if (!sourceKey || !destKey) {
+    const err = new Error('sourceKey and destKey are required');
+    err.code = 'INVALID_INPUT';
+    throw err;
+  }
+  if (target === 's3') {
+    return moveObjectS3({ sourceKey, destKey });
+  }
+  return moveObjectFs({ sourceKey, destKey });
 };
 
 const objectExists = async ({ key, backend }) => {
@@ -456,5 +509,6 @@ module.exports = {
   putObject,
   getObject,
   deleteObject,
+  moveObject,
   objectExists
 };

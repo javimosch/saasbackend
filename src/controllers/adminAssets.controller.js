@@ -385,3 +385,95 @@ exports.getStorageInfo = async (req, res) => {
     res.status(500).json({ error: 'Failed to get storage info' });
   }
 };
+
+exports.bulkMoveNamespace = async (req, res) => {
+  try {
+    const assetIds = Array.isArray(req.body?.assetIds) ? req.body.assetIds : [];
+    const targetNamespaceRaw = req.body?.targetNamespace;
+
+    const targetNamespaceKey = String(targetNamespaceRaw || '').trim();
+    if (!targetNamespaceKey) {
+      return res.status(400).json({ error: 'targetNamespace is required' });
+    }
+
+    const normalizedIds = assetIds
+      .map((id) => String(id || '').trim())
+      .filter(Boolean);
+
+    if (!normalizedIds.length) {
+      return res.status(400).json({ error: 'assetIds must be a non-empty array' });
+    }
+
+    if (normalizedIds.length > 100) {
+      return res.status(400).json({ error: 'Too many assets. Max 100 per request.' });
+    }
+
+    const namespaceConfig = await uploadNamespacesService.resolveNamespace(targetNamespaceKey);
+    if (!namespaceConfig?.enabled) {
+      return res.status(400).json({ error: 'Target namespace is disabled' });
+    }
+
+    const assets = await Asset.find({
+      _id: { $in: normalizedIds },
+      status: 'uploaded',
+    });
+
+    const results = {
+      ok: true,
+      targetNamespace: namespaceConfig.key,
+      requested: normalizedIds.length,
+      found: assets.length,
+      moved: 0,
+      skipped: 0,
+      failed: [],
+    };
+
+    for (const asset of assets) {
+      try {
+        const currentNamespace = String(asset.namespace || 'default');
+        if (currentNamespace === namespaceConfig.key) {
+          results.skipped += 1;
+          continue;
+        }
+
+        const newKey = uploadNamespacesService.generateObjectKey({
+          namespaceConfig,
+          originalName: asset.originalName,
+        });
+
+        const backend = asset?.provider === 's3' ? 's3' : 'fs';
+        const oldKey = asset.key;
+
+        await objectStorage.moveObject({
+          sourceKey: oldKey,
+          destKey: newKey,
+          backend,
+        });
+
+        const movedProvider = backend;
+        const movedBucket = backend === 's3'
+          ? (await objectStorage.getS3Config())?.bucket
+          : 'fs';
+
+        asset.key = newKey;
+        asset.namespace = namespaceConfig.key;
+        asset.provider = movedProvider;
+        asset.bucket = movedBucket || asset.bucket;
+        asset.visibilityEnforced = Boolean(namespaceConfig.enforceVisibility);
+        await asset.save();
+
+        results.moved += 1;
+      } catch (e) {
+        results.failed.push({
+          assetId: String(asset._id),
+          error: e?.message ? String(e.message) : 'Failed to move asset',
+        });
+      }
+    }
+
+    return res.json(results);
+  } catch (error) {
+    console.error('Error bulk moving assets:', error);
+    return res.status(500).json({ error: 'Failed to bulk move assets' });
+  }
+};
