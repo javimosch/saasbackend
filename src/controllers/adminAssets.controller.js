@@ -142,6 +142,57 @@ exports.list = async (req, res) => {
   }
 };
 
+exports.bulkSetTags = async (req, res) => {
+  try {
+    const assetIds = Array.isArray(req.body?.assetIds) ? req.body.assetIds : [];
+    const normalizedIds = assetIds
+      .map((id) => String(id || '').trim())
+      .filter(Boolean);
+
+    if (!normalizedIds.length) {
+      return res.status(400).json({ error: 'assetIds must be a non-empty array' });
+    }
+
+    if (normalizedIds.length > 200) {
+      return res.status(400).json({ error: 'Too many assets. Max 200 per request.' });
+    }
+
+    const tags = normalizeTags(req.body?.tags) || [];
+
+    const assets = await Asset.find({
+      _id: { $in: normalizedIds },
+      status: 'uploaded',
+    });
+
+    const results = {
+      ok: true,
+      requested: normalizedIds.length,
+      found: assets.length,
+      updated: 0,
+      failed: [],
+      tags,
+    };
+
+    for (const asset of assets) {
+      try {
+        asset.tags = tags;
+        await asset.save();
+        results.updated += 1;
+      } catch (e) {
+        results.failed.push({
+          assetId: String(asset._id),
+          error: e?.message ? String(e.message) : 'Failed to update tags',
+        });
+      }
+    }
+
+    return res.json(results);
+  } catch (error) {
+    console.error('Error bulk setting tags:', error);
+    return res.status(500).json({ error: 'Failed to bulk set tags' });
+  }
+};
+
 exports.replace = async (req, res) => {
   try {
     const asset = await Asset.findById(req.params.id);

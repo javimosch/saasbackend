@@ -861,6 +861,7 @@
           <div class="text-sm text-gray-700"><strong>${count}</strong> selected</div>
           <div class="flex flex-wrap gap-2">
             <button type="button" class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm" onclick="copySelectedPublicUrls()">Copy public URLs</button>
+            <button type="button" class="px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm" onclick="openBulkSetTagsModal()">Set tags</button>
             <button type="button" class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm" onclick="openBulkMoveNamespaceModal()">Move namespace</button>
             <button type="button" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm" onclick="clearBulkSelection()">Clear</button>
           </div>
@@ -924,6 +925,75 @@
       const modal = document.getElementById('bulk-move-namespace-modal');
       if (!modal) return;
       modal.classList.add('hidden');
+    }
+
+    function openBulkSetTagsModal() {
+      const modal = document.getElementById('bulk-set-tags-modal');
+      const subtitle = document.getElementById('bulk-set-tags-subtitle');
+      const input = document.getElementById('bulk-tags-input');
+      if (!modal || !input) return;
+
+      const count = selectedAssetIds.size;
+      if (!count) {
+        showToast('No assets selected', 'error');
+        return;
+      }
+
+      if (subtitle) subtitle.textContent = `${count} asset(s) selected`;
+      input.value = '';
+      modal.classList.remove('hidden');
+      try { input.focus(); } catch {}
+    }
+
+    function closeBulkSetTagsModal() {
+      const modal = document.getElementById('bulk-set-tags-modal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+    }
+
+    async function confirmBulkSetTags() {
+      const btn = document.getElementById('bulk-set-tags-confirm');
+      const input = document.getElementById('bulk-tags-input');
+      try {
+        const ids = Array.from(selectedAssetIds);
+        if (!ids.length) {
+          showToast('No assets selected', 'error');
+          return;
+        }
+
+        const tagsRaw = String(input?.value || '');
+        if (!confirm(`Set tags for ${ids.length} asset(s)?`)) return;
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Saving...';
+        }
+
+        const res = await fetch(`${API_BASE}/api/admin/assets/bulk/set-tags`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assetIds: ids, tags: tagsRaw }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Bulk set tags failed');
+
+        const failedCount = Array.isArray(data?.failed) ? data.failed.length : 0;
+        const msg = failedCount
+          ? `Updated ${data?.updated || 0}, failed ${failedCount}`
+          : `Updated ${data?.updated || 0}`;
+
+        showToast(msg);
+        closeBulkSetTagsModal();
+        clearBulkSelection();
+        await loadAssets();
+      } catch (e) {
+        showToast(e?.message ? String(e.message) : 'Bulk set tags failed', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Set tags';
+        }
+      }
     }
 
     async function confirmBulkMoveNamespace() {
