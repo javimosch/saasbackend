@@ -135,22 +135,52 @@
         <button onclick="closeAi()" class="text-gray-400 hover:text-gray-600">✕</button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
           <label class="block text-sm font-medium mb-2">From</label>
-          <input id="aiFrom" class="w-full border rounded px-3 py-2" value="en" />
+          <select id="aiFrom" class="w-full border rounded px-3 py-2" onchange="loadAiCandidates()"></select>
         </div>
         <div>
           <label class="block text-sm font-medium mb-2">To</label>
-          <input id="aiTo" class="w-full border rounded px-3 py-2" value="fr" />
+          <input id="aiTo" class="w-full border rounded px-3 py-2" value="fr" oninput="renderAiCandidates()" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Filter</label>
+          <input id="aiFilter" class="w-full border rounded px-3 py-2" placeholder="Filter keys..." oninput="renderAiCandidates()" />
         </div>
         <div>
           <label class="block text-sm font-medium mb-2">Model</label>
           <input id="aiModel" class="w-full border rounded px-3 py-2" placeholder="(optional)" />
         </div>
         <div class="flex items-center gap-2 pt-8">
-          <input id="aiMissing" type="checkbox" checked />
-          <label for="aiMissing" class="text-sm">Missing only</label>
+          <input id="aiMissing" type="checkbox" onchange="renderAiCandidates()" />
+          <label for="aiMissing" class="text-sm">Show missing only</label>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div class="flex gap-2 items-center">
+            <button type="button" onclick="aiBulkSelect('all')" class="px-3 py-2 bg-gray-100 rounded border hover:bg-gray-200">Select all</button>
+            <button type="button" onclick="aiBulkSelect('none')" class="px-3 py-2 bg-gray-100 rounded border hover:bg-gray-200">Select none</button>
+            <button type="button" onclick="aiBulkSelect('visible')" class="px-3 py-2 bg-gray-100 rounded border hover:bg-gray-200">Select visible</button>
+          </div>
+          <div class="text-sm text-gray-600">
+            <span id="aiCandidateSummary">0 selected</span>
+          </div>
+        </div>
+
+        <div class="mt-3 border rounded max-h-[24vh] overflow-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 sticky top-0">
+              <tr class="text-left border-b">
+                <th class="py-2 px-3 w-10"></th>
+                <th class="py-2 pr-4">Key</th>
+                <th class="py-2 pr-4">From value</th>
+              </tr>
+            </thead>
+            <tbody id="aiCandidateRows"></tbody>
+          </table>
         </div>
       </div>
 
@@ -159,7 +189,7 @@
         <button onclick="aiApply()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Apply selected</button>
       </div>
 
-      <div class="mt-4 overflow-auto max-h-[60vh]">
+      <div class="mt-4 overflow-auto max-h-[40vh]">
         <table class="min-w-full text-sm">
           <thead>
             <tr class="text-left border-b">
@@ -179,6 +209,11 @@
     const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
     let allLocales = [];
     let aiResults = [];
+    let aiCandidates = [];
+    let aiCandidateKeySet = new Set();
+    let aiSelectedKeys = new Set();
+    let aiToLocaleKeySet = null;
+    let aiToLocaleKeySetFor = null;
 
     function showToast(message, type = 'success') {
       const container = document.getElementById('toast-container');
@@ -197,6 +232,14 @@
       if (!res.ok) throw new Error('Failed to load locales');
       const data = await res.json();
       allLocales = data.locales || [];
+
+      if (!Array.isArray(allLocales) || allLocales.length === 0) {
+        allLocales = [
+          { code: 'en', isDefault: true },
+          { code: 'fr', isDefault: false },
+          { code: 'es', isDefault: false },
+        ];
+      }
 
       const select = document.getElementById('locale');
       select.innerHTML = allLocales.map(l => `<option value="${l.code}">${l.code}${l.isDefault ? ' (default)' : ''}</option>`).join('');
@@ -412,8 +455,43 @@
 
     function showAi() {
       document.getElementById('aiRows').innerHTML = '';
+      document.getElementById('aiCandidateRows').innerHTML = '';
       aiResults = [];
+      aiCandidates = [];
+      aiCandidateKeySet = new Set();
+      aiSelectedKeys = new Set();
+      aiToLocaleKeySet = null;
+      aiToLocaleKeySetFor = null;
+
+      const fromSelect = document.getElementById('aiFrom');
+      const fromLocales = allLocales
+        .filter((l) => Number(l.entryCount || 0) > 0)
+        .map((l) => l.code);
+
+      const fallbackFromLocales = allLocales
+        .filter((l) => l.enabled !== false)
+        .map((l) => l.code);
+
+      const fromOptions = (fromLocales.length > 0 ? fromLocales : fallbackFromLocales);
+      fromSelect.innerHTML = fromOptions.map((code) => `<option value="${code}">${code}</option>`).join('');
+
+      const currentLocale = document.getElementById('locale')?.value;
+      const defaultLocale = allLocales.find(l => l.isDefault)?.code || allLocales[0]?.code;
+      if (defaultLocale && fromOptions.includes(defaultLocale)) {
+        fromSelect.value = defaultLocale;
+      } else if (fromOptions.includes(String(currentLocale || ''))) {
+        fromSelect.value = currentLocale;
+      }
+
+      const toInput = document.getElementById('aiTo');
+      if (currentLocale) toInput.value = currentLocale;
+
+      document.getElementById('aiFilter').value = '';
+      document.getElementById('aiMissing').checked = false;
+      document.getElementById('aiCandidateSummary').textContent = '0 selected';
+
       document.getElementById('aiModal').classList.remove('hidden');
+      loadAiCandidates();
     }
 
     function closeAi() {
@@ -433,17 +511,143 @@
       `;
     }
 
+    function aiCandidateRow(item) {
+      const checked = aiSelectedKeys.has(item.key);
+      return `
+        <tr class="border-b hover:bg-gray-50">
+          <td class="py-2 px-3">
+            <input type="checkbox" data-ai-candidate="${escapeAttr(item.key)}" ${checked ? 'checked' : ''} onchange="toggleAiCandidate('${escapeAttr(item.key)}', this.checked)" />
+          </td>
+          <td class="py-2 pr-4 font-mono text-xs">${escapeHtml(item.key)}</td>
+          <td class="py-2 pr-4"><pre class="whitespace-pre-wrap max-w-4xl">${escapeHtml(item.value || '')}</pre></td>
+        </tr>
+      `;
+    }
+
+    function toggleAiCandidate(key, checked) {
+      if (!key) return;
+      if (checked) aiSelectedKeys.add(key);
+      else aiSelectedKeys.delete(key);
+      updateAiCandidateSummary();
+    }
+
+    function updateAiCandidateSummary() {
+      const selected = aiSelectedKeys.size;
+      const total = aiCandidates.length;
+      const el = document.getElementById('aiCandidateSummary');
+      if (!el) return;
+      el.textContent = `${selected} selected (of ${total})`;
+    }
+
+    async function buildToLocaleKeySet() {
+      const toLocale = document.getElementById('aiTo').value;
+      if (!toLocale) return new Set();
+      if (aiToLocaleKeySet && aiToLocaleKeySetFor === toLocale) return aiToLocaleKeySet;
+
+      const res = await fetch(`${API_BASE}/api/admin/i18n/entries?locale=${encodeURIComponent(toLocale)}`);
+      if (!res.ok) {
+        aiToLocaleKeySet = new Set();
+        aiToLocaleKeySetFor = toLocale;
+        return aiToLocaleKeySet;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      const entries = data.entries || [];
+      const set = new Set(entries.filter((e) => e && e.key).map((e) => e.key));
+      aiToLocaleKeySet = set;
+      aiToLocaleKeySetFor = toLocale;
+      return set;
+    }
+
+    async function loadAiCandidates() {
+      try {
+        const fromLocale = document.getElementById('aiFrom').value;
+        if (!fromLocale) return;
+
+        const res = await fetch(`${API_BASE}/api/admin/i18n/entries?locale=${encodeURIComponent(fromLocale)}`);
+        if (!res.ok) throw new Error('Failed to load source entries');
+
+        const data = await res.json().catch(() => ({}));
+        const entries = (data.entries || []).filter((e) => e && e._id && e.key);
+        aiCandidates = entries.map((e) => ({
+          key: e.key,
+          value: e.value || '',
+          valueFormat: e.valueFormat || 'text',
+        }));
+        aiCandidateKeySet = new Set(aiCandidates.map((c) => c.key));
+
+        aiSelectedKeys = new Set();
+        aiResults = [];
+        document.getElementById('aiRows').innerHTML = '';
+
+        updateAiCandidateSummary();
+        await renderAiCandidates();
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    async function renderAiCandidates() {
+      const filter = String(document.getElementById('aiFilter').value || '').trim().toLowerCase();
+      const showMissingOnly = document.getElementById('aiMissing').checked;
+
+      let candidates = aiCandidates;
+      if (filter) {
+        candidates = candidates.filter((c) => String(c.key).toLowerCase().includes(filter));
+      }
+
+      if (showMissingOnly) {
+        const toSet = await buildToLocaleKeySet();
+        candidates = candidates.filter((c) => !toSet.has(c.key));
+      }
+
+      const container = document.getElementById('aiCandidateRows');
+      container.innerHTML = candidates.map(aiCandidateRow).join('');
+      updateAiCandidateSummary();
+    }
+
+    function aiBulkSelect(mode) {
+      const filter = String(document.getElementById('aiFilter').value || '').trim().toLowerCase();
+      const showMissingOnly = document.getElementById('aiMissing').checked;
+
+      (async () => {
+        let candidates = aiCandidates;
+        if (filter) {
+          candidates = candidates.filter((c) => String(c.key).toLowerCase().includes(filter));
+        }
+        if (showMissingOnly) {
+          const toSet = await buildToLocaleKeySet();
+          candidates = candidates.filter((c) => !toSet.has(c.key));
+        }
+
+        if (mode === 'none') {
+          aiSelectedKeys = new Set();
+        } else if (mode === 'all') {
+          aiSelectedKeys = new Set(aiCandidates.map((c) => c.key));
+        } else if (mode === 'visible') {
+          for (const c of candidates) aiSelectedKeys.add(c.key);
+        }
+
+        await renderAiCandidates();
+      })();
+    }
+
     async function aiPreview() {
       try {
         const fromLocale = document.getElementById('aiFrom').value;
         const toLocale = document.getElementById('aiTo').value;
         const model = document.getElementById('aiModel').value;
-        const missingOnly = document.getElementById('aiMissing').checked;
+        const keys = Array.from(aiSelectedKeys);
+
+        if (keys.length === 0) {
+          showToast('Select at least one key to preview', 'error');
+          return;
+        }
 
         const res = await fetch(`${API_BASE}/api/admin/i18n/ai/preview`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fromLocale, toLocale, missingOnly, model: model || undefined })
+          body: JSON.stringify({ fromLocale, toLocale, keys, missingOnly: false, model: model || undefined })
         });
 
         if (!res.ok) {

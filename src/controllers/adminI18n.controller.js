@@ -40,6 +40,41 @@ async function setDefaultLocale(code) {
   await I18nLocale.updateOne({ code }, { $set: { enabled: true } });
 }
 
+async function ensureDefaultLocalesExist(actor) {
+  const defaults = ['en', 'fr', 'es'];
+  const existing = await I18nLocale.find({ code: { $in: defaults } }).select('code').lean();
+  const existingSet = new Set(existing.map((l) => l.code));
+
+  const toCreate = defaults
+    .filter((code) => !existingSet.has(code))
+    .map((code) => ({
+      code,
+      name: code.toUpperCase(),
+      enabled: true,
+      isDefault: false,
+    }));
+
+  if (toCreate.length > 0) {
+    const created = await I18nLocale.insertMany(toCreate);
+    for (const locale of created) {
+      await createAuditEvent({
+        ...(actor || { actorType: 'system', actorId: null }),
+        action: 'i18n.locale.auto_create',
+        entityType: 'I18nLocale',
+        entityId: String(locale._id),
+        before: null,
+        after: locale.toObject(),
+        meta: { reason: 'bootstrap_defaults' },
+      });
+    }
+  }
+
+  const hasDefault = await I18nLocale.findOne({ isDefault: true }).lean();
+  if (!hasDefault) {
+    await setDefaultLocale('en');
+  }
+}
+
 exports.listLocales = async (req, res) => {
   try {
     const actor = getBasicAuthActor(req);
@@ -48,8 +83,24 @@ exports.listLocales = async (req, res) => {
       await ensureLocaleExists(code, actor);
     }
 
+    const anyLocale = await I18nLocale.findOne({}).select('_id').lean();
+    if (!anyLocale) {
+      await ensureDefaultLocalesExist(actor);
+    }
+
     const locales = await I18nLocale.find().sort({ code: 1 }).lean();
-    res.json({ locales });
+
+    const counts = await I18nEntry.aggregate([
+      { $group: { _id: '$locale', entryCount: { $sum: 1 } } },
+    ]);
+    const countByLocale = new Map(counts.map((c) => [c._id, c.entryCount]));
+
+    const enriched = locales.map((l) => ({
+      ...l,
+      entryCount: countByLocale.get(l.code) || 0,
+    }));
+
+    res.json({ locales: enriched });
   } catch (error) {
     console.error('Error listing locales:', error);
     res.status(500).json({ error: 'Failed to list locales' });
@@ -329,9 +380,9 @@ exports.deleteEntry = async (req, res) => {
 };
 
 async function buildOpenRouterClient() {
-  const apiKey = await getSettingValue('i18n.ai.openrouter.apiKey', null);
+  const apiKey = await getSettingValue('i18n.ai.openrouter.apiKey', await getSettingValue('ai.openrouter.apiKey', null));
   if (!apiKey) {
-    throw new Error('Missing i18n.ai.openrouter.apiKey');
+    throw new Error('Missing i18n.ai.openrouter.apiKey or ai.openrouter.apiKey');
   }
 
   return new OpenAI({
