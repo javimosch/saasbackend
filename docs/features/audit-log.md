@@ -121,10 +121,21 @@ Notes:
 
 #### Audit log admin APIs
 
-- `GET /api/admin/audit`
-- `GET /api/admin/audit/stats`
-- `GET /api/admin/audit/actions`
-- `GET /api/admin/audit/:id`
+- `GET /api/admin/audit` - List events with filters and pagination
+- `GET /api/admin/audit/stats` - Summary statistics
+- `GET /api/admin/audit/actions` - List unique action names
+- `GET /api/admin/audit/:id` - Get single event details
+
+**Query parameters for listing:**
+- `actorType`: `user`, `admin_basic`, `system`, `anonymous`
+- `actorUserId`: Filter by specific user ID
+- `action`: Filter by action name (regex)
+- `outcome`: `success`, `failure`
+- `targetType`: Filter by target entity type
+- `targetId`: Filter by target entity ID
+- `q`: Global search query
+- `from`/`to`: Date range (ISO format)
+- `page`/`pageSize`: Pagination (default 50, max 100)
 
 Example:
 

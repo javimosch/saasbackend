@@ -38,7 +38,7 @@ app.listen(3000);
 Verify it’s running:
 
 ```bash
-curl http://localhost:3000/saas/health
+curl ${BASE_URL}/health
 ```
 
 Next steps:

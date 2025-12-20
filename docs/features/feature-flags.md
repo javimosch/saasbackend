@@ -57,7 +57,7 @@ Optional anonymous stickiness for percentage rollouts:
 Example:
 
 ```bash
-curl "http://localhost:5000/api/feature-flags/public"
+curl "${BASE_URL}/api/feature-flags/public"
 ```
 
 Response shape:
@@ -84,7 +84,7 @@ Example:
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:5000/api/feature-flags"
+  "${BASE_URL}/api/feature-flags"
 ```
 
 Example with org:
@@ -92,7 +92,7 @@ Example with org:
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
   -H "x-org-id: ORG_ID" \
-  "http://localhost:5000/api/feature-flags"
+  "${BASE_URL}/api/feature-flags"
 ```
 
 Response shape:
@@ -114,14 +114,14 @@ DELETE /api/admin/feature-flags/:key
 List:
 
 ```bash
-curl -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" \
-  "http://localhost:5000/api/admin/feature-flags"
+curl -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
+  "${BASE_URL}/api/admin/feature-flags"
 ```
 
 Create:
 
 ```bash
-curl -X POST -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" \
+curl -X POST -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
   -H "Content-Type: application/json" \
   -d '{
     "key": "new_checkout",
@@ -134,23 +134,23 @@ curl -X POST -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" \
     "denyListOrgIds": [],
     "payload": { "variant": "A" }
   }' \
-  "http://localhost:5000/api/admin/feature-flags"
+  "${BASE_URL}/api/admin/feature-flags"
 ```
 
 Update:
 
 ```bash
-curl -X PUT -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" \
+curl -X PUT -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
   -H "Content-Type: application/json" \
   -d '{"enabled": true, "rolloutPercentage": 100}' \
-  "http://localhost:5000/api/admin/feature-flags/new_checkout"
+  "${BASE_URL}/api/admin/feature-flags/new_checkout"
 ```
 
 Delete:
 
 ```bash
-curl -X DELETE -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" \
-  "http://localhost:5000/api/admin/feature-flags/new_checkout"
+curl -X DELETE -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
+  "${BASE_URL}/api/admin/feature-flags/new_checkout"
 ```
 
 ## Admin UI

@@ -83,7 +83,7 @@ DELETE /api/admin/settings/:key
 ### Read public settings
 
 ```bash
-curl "http://localhost:5000/api/settings/public"
+curl "${BASE_URL}/api/settings/public"
 ```
 
 ### Create/update an encrypted setting (admin)
@@ -91,10 +91,10 @@ curl "http://localhost:5000/api/settings/public"
 You typically do this through the admin UI, but you can also use the API.
 
 ```bash
-curl -X PUT -u admin:password \
+curl -X PUT -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
   -H "Content-Type: application/json" \
   -d '{"type":"encrypted","value":"sk_test_...","public":false}' \
-  "http://localhost:5000/api/admin/settings/STRIPE_SECRET_KEY"
+  "${BASE_URL}/api/admin/settings/STRIPE_SECRET_KEY"
 ```
 
 ## Troubleshooting
