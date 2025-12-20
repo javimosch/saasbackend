@@ -44,6 +44,43 @@ const updateUserSubscription = asyncHandler(async (req, res) => {
   res.json({ user: user.toJSON() });
 });
 
+// Update user password
+const updateUserPassword = asyncHandler(async (req, res) => {
+  const { passwordHash } = req.body;
+  const bcrypt = require('bcryptjs');
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  if (!passwordHash) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+
+  // Detect if the provided password is already a bcrypt hash
+  const isBcryptHash = /^\$2[aby]\$\d{2}\$/.test(passwordHash);
+  if (isBcryptHash) {
+    return res.status(400).json({ 
+      error: 'Invalid password format',
+      message: 'The password appears to be already hashed. Please provide a plaintext password instead.',
+      hint: 'Bcrypt hashes start with $2a$, $2b$, or $2y$ followed by a cost parameter (e.g., $2a$10$...)'
+    });
+  }
+
+  try {
+    // Set plaintext password and let pre-save hook hash it
+    user.passwordHash = passwordHash;
+    await user.save();
+    
+  } catch (error) {
+    console.error('Save error:', error);
+    throw error;
+  }
+
+  res.json({ user: user.toJSON() });
+});
+
 // Reconcile user subscription
 const reconcileUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
@@ -240,6 +277,7 @@ module.exports = {
   getUsers,
   getUser,
   updateUserSubscription,
+  updateUserPassword,
   reconcileUser,
   generateToken,
   getWebhookEvents,
