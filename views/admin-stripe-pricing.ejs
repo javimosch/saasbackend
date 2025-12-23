@@ -515,6 +515,32 @@
       };
       document.getElementById('btn-close-stripe').onclick = () => document.getElementById('modal-stripe').classList.add('hidden');
       document.getElementById('btn-load-more-stripe').onclick = () => loadStripePrices(true);
+
+      const runEnvSyncBtn = document.getElementById('btn-env-sync-run');
+
+      if (runEnvSyncBtn) {
+        runEnvSyncBtn.onclick = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/api/admin/stripe/env/sync`, {
+              method: 'POST'
+            });
+
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+              showToast(data.error || 'Failed to sync env', 'error');
+              return;
+            }
+
+            const appliedCount = Array.isArray(data.applied) ? data.applied.length : 0;
+            const totalActive = typeof data.totalActive === 'number' ? data.totalActive : null;
+            const suffix = totalActive === null ? '' : ` (active: ${totalActive})`;
+            showToast(`Synced env for ${appliedCount} planKey(s)${suffix}.`, 'success');
+          } catch (e) {
+            showToast(e.message || 'Failed to sync env', 'error');
+          }
+        };
+      }
       toggleIntervalVisibility();
     }
 

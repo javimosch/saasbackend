@@ -15,5 +15,6 @@ router.post('/catalog/:id/activate', basicAuth, asyncHandler(stripeAdminControll
 router.delete('/catalog/:id', basicAuth, asyncHandler(stripeAdminController.deleteCatalogItem));
 router.get('/products', basicAuth, asyncHandler(stripeAdminController.listStripeProducts));
 router.get('/prices', basicAuth, asyncHandler(stripeAdminController.listStripePrices));
+router.post('/env/sync', basicAuth, asyncHandler(stripeAdminController.syncEnvFromCatalog));
 
 module.exports = router;

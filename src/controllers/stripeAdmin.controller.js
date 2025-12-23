@@ -378,3 +378,33 @@ exports.listStripePrices = async (req, res) => {
     return res.status(500).json({ error: error.message || 'Failed to list Stripe prices' });
   }
 };
+
+exports.syncEnvFromCatalog = async (req, res) => {
+  try {
+    const items = await StripeCatalogItem.find({ active: true })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const applied = [];
+
+    for (const item of items) {
+      const envVar = String(item.planKey || '').trim();
+      if (!envVar) continue;
+
+      process.env[envVar] = item.stripePriceId;
+      applied.push({
+        envVar,
+        stripePriceId: item.stripePriceId,
+      });
+    }
+
+    return res.json({
+      applied,
+      totalActive: items.length,
+    });
+  } catch (error) {
+    console.error('Stripe env sync error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to sync env from catalog' });
+  }
+};
+
