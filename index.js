@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: process.env.ENV_FILE || ".env" });
 const express = require("express");
 
 /**
@@ -48,6 +48,8 @@ const saasbackend = {
     globalSettings: require("./src/services/globalSettings.service"),
     jsonConfigs: require("./src/services/jsonConfigs.service"),
     assets: require("./src/services/assets.service"),
+    uploadNamespaces: require("./src/services/uploadNamespaces.service"),
+    llm: require("./src/services/llm.service"),
   },
   models: {
     ActionEvent: require("./src/models/ActionEvent"),

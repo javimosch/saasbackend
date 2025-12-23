@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM / AI - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .toast { animation: slideIn 0.3s ease-out; }
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      .fade-out { animation: fadeOut 0.3s ease-out forwards; }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100">
+    <div class="min-h-screen">
+      <div class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900">LLM / AI</h1>
+              <p class="text-sm text-gray-600 mt-1">Configure OpenAI-compatible providers, prompts, and inspect LLM audit events.</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <a href="<%= (baseUrl || '') %>/admin/test" class="text-blue-600 hover:text-blue-800">← Back to API Test</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <!-- Providers + Prompts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Providers -->
+          <div class="bg-white rounded-lg shadow">
+            <div class="px-4 py-3 border-b flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Providers</h2>
+                <p class="text-sm text-gray-600">OpenAI-compatible endpoints used by prompts.</p>
+              </div>
+              <button id="btnAddProvider" class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">New Provider</button>
+            </div>
+            <div class="p-4 space-y-4">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Key</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Label</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Preset</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Base URL</th>
+                      <th class="px-3 py-2 text-center font-medium text-gray-500 uppercase text-xs">Enabled</th>
+                      <th class="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="providersTable" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+              </div>
+
+              <div id="providerEditor" class="border rounded p-4 bg-gray-50 hidden">
+                <h3 class="text-sm font-semibold mb-3" id="providerEditorTitle">New Provider</h3>
+                <div class="grid grid-cols-1 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Key *</label>
+                    <input id="providerKey" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. openai-main" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Label</label>
+                    <input id="providerLabel" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="Human readable name" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Preset</label>
+                    <select id="providerPreset" class="w-full border rounded px-2 py-1 text-sm">
+                      <option value="custom">Custom</option>
+                      <option value="openai">OpenAI</option>
+                      <option value="openrouter">OpenRouter</option>
+                      <option value="groq">Groq</option>
+                      <option value="mistral">Mistral</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Base URL *</label>
+                    <input id="providerBaseUrl" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="https://api.openai.com/v1" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">API Key *</label>
+                    <input id="providerApiKey" type="password" class="w-full border rounded px-2 py-1 text-sm" placeholder="sk-..." />
+                    <p class="text-[11px] text-gray-500 mt-1">Stored server-side in GlobalSetting JSON; not exposed publicly.</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Default model</label>
+                    <input id="providerDefaultModel" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. gpt-4.1-mini" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Model pricing (JSON, optional)</label>
+                    <textarea id="providerModelPricing" rows="4" class="w-full border rounded px-2 py-1 text-sm font-mono" placeholder="{
+  \"gpt-4.1-mini\": { \"costPerMillionIn\": 0.15, \"costPerMillionOut\": 0.6 }
+}"></textarea>
+                    <p class="text-[11px] text-gray-500 mt-1">Used to compute fallback cost when the provider does not return usage.cost.</p>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3 items-center">
+                    <label class="flex items-center text-xs font-medium">
+                      <input id="providerEnabled" type="checkbox" class="mr-2" checked />
+                      Enabled
+                    </label>
+                    <div>
+                      <label class="block text-xs font-medium mb-1">Timeout (ms)</label>
+                      <input id="providerTimeout" type="number" min="1000" value="60000" class="w-full border rounded px-2 py-1 text-sm" />
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-4 flex justify-end gap-2">
+                  <button id="btnCancelProvider" class="px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm">Cancel</button>
+                  <button id="btnSaveProvider" class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">Save Provider</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prompts -->
+          <div class="bg-white rounded-lg shadow">
+            <div class="px-4 py-3 border-b flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Prompts</h2>
+                <p class="text-sm text-gray-600">Named templates that call configured providers/models.</p>
+              </div>
+              <button id="btnAddPrompt" class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">New Prompt</button>
+            </div>
+            <div class="p-4 space-y-4">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Key</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Label</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Provider</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-xs">Model</th>
+                      <th class="px-3 py-2 text-center font-medium text-gray-500 uppercase text-xs">Enabled</th>
+                      <th class="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="promptsTable" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+              </div>
+
+              <div id="promptEditor" class="border rounded p-4 bg-gray-50 hidden">
+                <h3 class="text-sm font-semibold mb-3" id="promptEditorTitle">New Prompt</h3>
+                <div class="grid grid-cols-1 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Key *</label>
+                    <input id="promptKey" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. tell_joke" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Label</label>
+                    <input id="promptLabel" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="Human readable name" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Description</label>
+                    <input id="promptDescription" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="Short summary of what this prompt does" />
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-medium mb-1">Provider key *</label>
+                      <input id="promptProviderKey" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="Must match a provider key" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium mb-1">Model</label>
+                      <input id="promptModel" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="Override provider default model (optional)" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Template *</label>
+                    <textarea id="promptTemplate" rows="4" class="w-full border rounded px-2 py-1 text-sm font-mono" placeholder="Tell me a joke about {theme}"></textarea>
+                    <p class="text-[11px] text-gray-500 mt-1">Use <code>{variable}</code> placeholders. They are replaced from the variables object.</p>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Default options (JSON)</label>
+                    <textarea id="promptDefaultOptions" rows="4" class="w-full border rounded px-2 py-1 text-sm font-mono">{
+  "temperature": 0.7,
+  "max_tokens": 256
+}</textarea>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium mb-1">Input schema (JSON, optional)</label>
+                    <textarea id="promptInputSchema" rows="4" class="w-full border rounded px-2 py-1 text-sm font-mono" placeholder="{
+  &quot;theme&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;label&quot;: &quot;Theme&quot;, &quot;required&quot;: true }
+}"></textarea>
+                  </div>
+                  <div>
+                    <label class="flex items-center text-xs font-medium">
+                      <input id="promptEnabled" type="checkbox" class="mr-2" checked />
+                      Enabled
+                    </label>
+                  </div>
+                </div>
+                <div class="mt-4 flex justify-end gap-2">
+                  <button id="btnCancelPrompt" class="px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-sm">Cancel</button>
+                  <button id="btnSavePrompt" class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">Save Prompt</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test + Audit -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Test prompt -->
+          <div class="bg-white rounded-lg shadow">
+            <div class="px-4 py-3 border-b flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Test Prompt</h2>
+                <p class="text-sm text-gray-600">Run a configured prompt with sample variables and see the response.</p>
+              </div>
+            </div>
+            <div class="p-4 space-y-3">
+              <div>
+                <label class="block text-xs font-medium mb-1">Prompt key</label>
+                <input id="testPromptKey" type="text" class="w-full border rounded px-2 py-1 text-sm" placeholder="e.g. tell_joke" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">Variables (JSON)</label>
+                <textarea id="testVariables" rows="4" class="w-full border rounded px-2 py-1 text-sm font-mono">{
+  "theme": "universe"
+}</textarea>
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">Runtime options (JSON, optional)</label>
+                <textarea id="testOptions" rows="3" class="w-full border rounded px-2 py-1 text-sm font-mono">{
+  "temperature": 0.8
+}</textarea>
+              </div>
+              <div class="flex justify-end">
+                <button id="btnRunTest" class="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">Run Test</button>
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">Result</label>
+                <pre id="testResult" class="bg-gray-50 border rounded p-3 text-sm overflow-auto max-h-64 whitespace-pre-wrap"></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- LLM Audit -->
+          <div class="bg-white rounded-lg shadow">
+            <div class="px-4 py-3 border-b flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">LLM Audit</h2>
+                <p class="text-sm text-gray-600">Recent LLM completions (action = llm.completion).</p>
+              </div>
+            </div>
+            <div class="p-4 space-y-3">
+              <div class="grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label class="block font-medium mb-1">Prompt key</label>
+                  <input id="auditPromptKey" class="w-full border rounded px-2 py-1" placeholder="optional" />
+                </div>
+                <div>
+                  <label class="block font-medium mb-1">Provider key</label>
+                  <input id="auditProviderKey" class="w-full border rounded px-2 py-1" placeholder="optional" />
+                </div>
+                <div>
+                  <label class="block font-medium mb-1">Status</label>
+                  <select id="auditStatus" class="w-full border rounded px-2 py-1">
+                    <option value="">Any</option>
+                    <option value="success">Success</option>
+                    <option value="failure">Failure</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-xs mt-1">
+                <div>
+                  <label class="mr-1">Page size</label>
+                  <select id="auditPageSize" class="border rounded px-2 py-1">
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                  </select>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <button id="btnAuditPrev" class="px-2 py-1 bg-gray-200 text-gray-800 rounded disabled:opacity-50">Prev</button>
+                  <span id="auditPageLabel" class="text-gray-600">Page 1</span>
+                  <button id="btnAuditNext" class="px-2 py-1 bg-gray-200 text-gray-800 rounded disabled:opacity-50">Next</button>
+                  <button id="btnAuditReload" class="px-3 py-1 bg-blue-600 text-white rounded">Reload</button>
+                </div>
+              </div>
+              <div class="overflow-x-auto border rounded">
+                <table class="min-w-full divide-y divide-gray-200 text-xs">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Time</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Prompt</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Provider</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Model</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Status</th>
+                      <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Tokens</th>
+                    </tr>
+                  </thead>
+                  <tbody id="auditTable" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Tracking -->
+        <div class="bg-white rounded-lg shadow">
+          <div class="px-4 py-3 border-b flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Cost Tracking</h2>
+              <p class="text-sm text-gray-600">Manual search over successful LLM completions (tokens + USD cost if available).</p>
+            </div>
+          </div>
+          <div class="p-4 space-y-3">
+            <div class="grid grid-cols-4 gap-3 text-xs">
+              <div>
+                <label class="block font-medium mb-1">Prompt key</label>
+                <input id="costPromptKey" class="w-full border rounded px-2 py-1" placeholder="optional" />
+              </div>
+              <div>
+                <label class="block font-medium mb-1">Provider key</label>
+                <input id="costProviderKey" class="w-full border rounded px-2 py-1" placeholder="optional" />
+              </div>
+              <div>
+                <label class="block font-medium mb-1">Model</label>
+                <input id="costModel" class="w-full border rounded px-2 py-1" placeholder="optional" />
+              </div>
+              <div>
+                <label class="block font-medium mb-1">Page size</label>
+                <select id="costPageSize" class="w-full border rounded px-2 py-1">
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-xs mt-1">
+              <div class="flex gap-2 items-center">
+                <button id="btnCostPrev" class="px-2 py-1 bg-gray-200 text-gray-800 rounded disabled:opacity-50">Prev</button>
+                <span id="costPageLabel" class="text-gray-600">Page 1</span>
+                <button id="btnCostNext" class="px-2 py-1 bg-gray-200 text-gray-800 rounded disabled:opacity-50">Next</button>
+              </div>
+              <div class="flex gap-2 items-center">
+                <button id="btnCostSearch" class="px-3 py-1 bg-blue-600 text-white rounded">Search</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto border rounded">
+              <table class="min-w-full divide-y divide-gray-200 text-xs">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Time</th>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Prompt</th>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Provider</th>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Model</th>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Tokens (in/out/total)</th>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Cost (USD)</th>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 uppercase text-[10px]">Cost source</th>
+                  </tr>
+                </thead>
+                <tbody id="costTable" class="bg-white divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 text-sm text-blue-900">
+          <p class="font-semibold mb-1">Storage model</p>
+          <p>Providers and prompts are stored in <code>GlobalSetting</code> rows as JSON under keys <code>llm.providers</code> and <code>llm.prompts</code>. Use the internal service:</p>
+          <pre class="mt-2 bg-blue-100 rounded p-2 text-xs overflow-auto">const saasbackend = require('saasbackend');
+
+const result = await saasbackend.services.llm.call('tell_joke', {
+  theme: 'universe',
+}, {
+  temperature: 0.8,
+});
+
+console.log(result.content);</pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
+
+    <script>
+      const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
+      let providers = {};
+      let prompts = {};
+      let auditPage = 1;
+      let costPage = 1;
+
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast px-4 py-3 rounded-lg shadow-lg text-white text-sm ${
+          type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        }`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.add('fade-out');
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+
+      function renderProviders() {
+        const tbody = document.getElementById('providersTable');
+        tbody.innerHTML = '';
+        const entries = Object.entries(providers || {});
+        if (!entries.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="6" class="px-3 py-4 text-center text-xs text-gray-500">No providers configured yet.</td>`;
+          tbody.appendChild(tr);
+          return;
+        }
+        for (const [key, p] of entries) {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-gray-50';
+          tr.innerHTML = `
+            <td class="px-3 py-2 text-xs text-gray-900">${escapeHtml(key)}</td>
+            <td class="px-3 py-2 text-xs text-gray-900">${escapeHtml(p.label || '')}</td>
+            <td class="px-3 py-2 text-xs text-gray-700">${escapeHtml(p.preset || 'custom')}</td>
+            <td class="px-3 py-2 text-xs text-gray-700 truncate max-w-[160px]" title="${escapeHtml(p.baseUrl || '')}">${escapeHtml(p.baseUrl || '')}</td>
+            <td class="px-3 py-2 text-xs text-center">${p.enabled === false ? '<span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600">off</span>' : '<span class="px-2 py-0.5 rounded bg-green-100 text-green-700">on</span>'}</td>
+            <td class="px-3 py-2 text-xs text-right">
+              <button class="text-blue-600 hover:text-blue-800 mr-2" onclick="editProvider('${escapeJs(key)}')">Edit</button>
+              <button class="text-red-600 hover:text-red-800" onclick="deleteProvider('${escapeJs(key)}')">Delete</button>
+            </td>`;
+          tbody.appendChild(tr);
+        }
+      }
+
+      function renderPrompts() {
+        const tbody = document.getElementById('promptsTable');
+        tbody.innerHTML = '';
+        const entries = Object.entries(prompts || {});
+        if (!entries.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="6" class="px-3 py-4 text-center text-xs text-gray-500">No prompts configured yet.</td>`;
+          tbody.appendChild(tr);
+          return;
+        }
+        for (const [key, p] of entries) {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-gray-50';
+          tr.innerHTML = `
+            <td class="px-3 py-2 text-xs text-gray-900">${escapeHtml(key)}</td>
+            <td class="px-3 py-2 text-xs text-gray-900">${escapeHtml(p.label || '')}</td>
+            <td class="px-3 py-2 text-xs text-gray-700">${escapeHtml(p.providerKey || '')}</td>
+            <td class="px-3 py-2 text-xs text-gray-700">${escapeHtml(p.model || '')}</td>
+            <td class="px-3 py-2 text-xs text-center">${p.enabled === false ? '<span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600">off</span>' : '<span class="px-2 py-0.5 rounded bg-green-100 text-green-700">on</span>'}</td>
+            <td class="px-3 py-2 text-xs text-right">
+              <button class="text-blue-600 hover:text-blue-800 mr-2" onclick="editPrompt('${escapeJs(key)}')">Edit</button>
+              <button class="text-red-600 hover:text-red-800" onclick="deletePrompt('${escapeJs(key)}')">Delete</button>
+            </td>`;
+          tbody.appendChild(tr);
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function escapeJs(str) {
+        return String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      }
+
+      async function loadConfig() {
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/llm/config`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to load config');
+          providers = data.providers || {};
+          prompts = data.prompts || {};
+          renderProviders();
+          renderPrompts();
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      async function saveConfig() {
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/llm/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ providers, prompts }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to save config');
+          showToast('Config saved');
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      function applyProviderPresetDefaults() {
+        const preset = document.getElementById('providerPreset').value;
+        const baseUrlInput = document.getElementById('providerBaseUrl');
+        const current = baseUrlInput.value.trim();
+
+        if (current) {
+          return;
+        }
+
+        if (preset === 'openai') {
+          baseUrlInput.value = 'https://api.openai.com/v1';
+        } else if (preset === 'openrouter') {
+          baseUrlInput.value = 'https://openrouter.ai/api/v1';
+        } else if (preset === 'groq') {
+          baseUrlInput.value = 'https://api.groq.com/openai/v1';
+        } else if (preset === 'mistral') {
+          baseUrlInput.value = 'https://api.mistral.ai/v1';
+        }
+      }
+
+      function openProviderEditor(key) {
+        const editor = document.getElementById('providerEditor');
+        const title = document.getElementById('providerEditorTitle');
+        const p = key && providers[key] ? providers[key] : null;
+        title.textContent = p ? `Edit Provider: ${key}` : 'New Provider';
+        document.getElementById('providerKey').value = key || '';
+        document.getElementById('providerKey').disabled = Boolean(p);
+        document.getElementById('providerLabel').value = p?.label || '';
+        document.getElementById('providerPreset').value = p?.preset || 'custom';
+        document.getElementById('providerBaseUrl').value = p?.baseUrl || '';
+        document.getElementById('providerApiKey').value = p?.apiKey || '';
+        document.getElementById('providerDefaultModel').value = p?.defaultModel || '';
+        document.getElementById('providerModelPricing').value = p?.modelPricing
+          ? JSON.stringify(p.modelPricing, null, 2)
+          : '';
+        document.getElementById('providerEnabled').checked = p ? p.enabled !== false : true;
+        document.getElementById('providerTimeout').value = String(p?.timeoutMs ?? 60000);
+        editor.classList.remove('hidden');
+
+        applyProviderPresetDefaults();
+      }
+
+      function closeProviderEditor() {
+        document.getElementById('providerEditor').classList.add('hidden');
+      }
+
+      function createOrUpdateProviderFromForm() {
+        const key = document.getElementById('providerKey').value.trim();
+        if (!key) {
+          showToast('Provider key is required', 'error');
+          return;
+        }
+        const next = providers ? { ...providers } : {};
+        const existing = next[key] || {};
+        const preset = document.getElementById('providerPreset').value || 'custom';
+        let baseUrl = document.getElementById('providerBaseUrl').value.trim();
+        if (!baseUrl) {
+          if (preset === 'openai') baseUrl = 'https://api.openai.com/v1';
+          if (preset === 'openrouter') baseUrl = 'https://openrouter.ai/api/v1';
+        }
+        let modelPricing = {};
+        const rawModelPricing = document.getElementById('providerModelPricing').value;
+        if (rawModelPricing && rawModelPricing.trim()) {
+          try {
+            modelPricing = JSON.parse(rawModelPricing);
+          } catch (e) {
+            showToast('Invalid model pricing JSON: ' + e.message, 'error');
+            return;
+          }
+        }
+        next[key] = {
+          ...existing,
+          label: document.getElementById('providerLabel').value.trim() || key,
+          preset,
+          baseUrl,
+          apiKey: document.getElementById('providerApiKey').value.trim(),
+          defaultModel: document.getElementById('providerDefaultModel').value.trim(),
+          modelPricing,
+          enabled: document.getElementById('providerEnabled').checked,
+          timeoutMs: Number(document.getElementById('providerTimeout').value || 60000),
+        };
+        providers = next;
+        renderProviders();
+        closeProviderEditor();
+        saveConfig();
+      }
+
+      function deleteProvider(key) {
+        if (!confirm(`Delete provider "${key}"?`)) return;
+        const next = { ...(providers || {}) };
+        delete next[key];
+        providers = next;
+        renderProviders();
+        saveConfig();
+      }
+
+      function openPromptEditor(key) {
+        const editor = document.getElementById('promptEditor');
+        const title = document.getElementById('promptEditorTitle');
+        const p = key && prompts[key] ? prompts[key] : null;
+        title.textContent = p ? `Edit Prompt: ${key}` : 'New Prompt';
+        document.getElementById('promptKey').value = key || '';
+        document.getElementById('promptKey').disabled = Boolean(p);
+        document.getElementById('promptLabel').value = p?.label || '';
+        document.getElementById('promptDescription').value = p?.description || '';
+        document.getElementById('promptProviderKey').value = p?.providerKey || '';
+        document.getElementById('promptModel').value = p?.model || '';
+        document.getElementById('promptTemplate').value = p?.template || '';
+        document.getElementById('promptEnabled').checked = p ? p.enabled !== false : true;
+        document.getElementById('promptDefaultOptions').value = JSON.stringify(p?.defaultOptions ?? { temperature: 0.7, max_tokens: 256 }, null, 2);
+        document.getElementById('promptInputSchema').value = p?.inputSchema ? JSON.stringify(p.inputSchema, null, 2) : '';
+        editor.classList.remove('hidden');
+      }
+
+      function closePromptEditor() {
+        document.getElementById('promptEditor').classList.add('hidden');
+      }
+
+      function createOrUpdatePromptFromForm() {
+        const key = document.getElementById('promptKey').value.trim();
+        if (!key) {
+          showToast('Prompt key is required', 'error');
+          return;
+        }
+        const providerKey = document.getElementById('promptProviderKey').value.trim();
+        if (!providerKey) {
+          showToast('Prompt provider key is required', 'error');
+          return;
+        }
+        const template = document.getElementById('promptTemplate').value;
+        if (!template.trim()) {
+          showToast('Prompt template is required', 'error');
+          return;
+        }
+        let defaultOptions = {};
+        const rawOptions = document.getElementById('promptDefaultOptions').value;
+        if (rawOptions && rawOptions.trim()) {
+          try {
+            defaultOptions = JSON.parse(rawOptions);
+          } catch (e) {
+            showToast('Invalid default options JSON: ' + e.message, 'error');
+            return;
+          }
+        }
+        let inputSchema = null;
+        const rawSchema = document.getElementById('promptInputSchema').value;
+        if (rawSchema && rawSchema.trim()) {
+          try {
+            inputSchema = JSON.parse(rawSchema);
+          } catch (e) {
+            showToast('Invalid input schema JSON: ' + e.message, 'error');
+            return;
+          }
+        }
+        const next = prompts ? { ...prompts } : {};
+        next[key] = {
+          label: document.getElementById('promptLabel').value.trim() || key,
+          description: document.getElementById('promptDescription').value.trim(),
+          providerKey,
+          model: document.getElementById('promptModel').value.trim(),
+          template,
+          defaultOptions,
+          inputSchema,
+          enabled: document.getElementById('promptEnabled').checked,
+        };
+        prompts = next;
+        renderPrompts();
+        closePromptEditor();
+        saveConfig();
+      }
+
+      function deletePrompt(key) {
+        if (!confirm(`Delete prompt "${key}"?`)) return;
+        const next = { ...(prompts || {}) };
+        delete next[key];
+        prompts = next;
+        renderPrompts();
+        saveConfig();
+      }
+
+      async function runTest() {
+        const key = document.getElementById('testPromptKey').value.trim();
+        if (!key) {
+          showToast('Prompt key is required', 'error');
+          return;
+        }
+        let variables = {};
+        let options = {};
+        try {
+          const rawVars = document.getElementById('testVariables').value;
+          variables = rawVars && rawVars.trim() ? JSON.parse(rawVars) : {};
+        } catch (e) {
+          showToast('Invalid variables JSON: ' + e.message, 'error');
+          return;
+        }
+        try {
+          const rawOpts = document.getElementById('testOptions').value;
+          options = rawOpts && rawOpts.trim() ? JSON.parse(rawOpts) : {};
+        } catch (e) {
+          showToast('Invalid options JSON: ' + e.message, 'error');
+          return;
+        }
+        const resultEl = document.getElementById('testResult');
+        resultEl.textContent = 'Running...';
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/llm/prompts/${encodeURIComponent(key)}/test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ variables, options }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Test failed');
+          resultEl.textContent = JSON.stringify(data.result, null, 2);
+          showToast('Test completed');
+        } catch (e) {
+          resultEl.textContent = 'Error: ' + e.message;
+          showToast(e.message, 'error');
+        }
+      }
+
+      async function loadAudit() {
+        const promptKey = document.getElementById('auditPromptKey').value.trim();
+        const providerKey = document.getElementById('auditProviderKey').value.trim();
+        const status = document.getElementById('auditStatus').value;
+        const pageSize = Number(document.getElementById('auditPageSize').value || 20);
+        const params = new URLSearchParams();
+        params.set('page', String(auditPage));
+        params.set('pageSize', String(pageSize));
+        if (promptKey) params.set('promptKey', promptKey);
+        if (providerKey) params.set('providerKey', providerKey);
+        if (status) params.set('status', status);
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/llm/audit?${params.toString()}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to load audit');
+          renderAudit(data);
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      function renderAudit(data) {
+        const tbody = document.getElementById('auditTable');
+        tbody.innerHTML = '';
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (!items.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="6" class="px-3 py-4 text-center text-xs text-gray-500">No audit entries.</td>`;
+          tbody.appendChild(tr);
+        } else {
+          for (const ev of items) {
+            const meta = ev.meta || {};
+            const createdAt = ev.createdAt ? new Date(ev.createdAt) : null;
+            const tokensPrompt = meta.usage?.prompt_tokens ?? '';
+            const tokensCompletion = meta.usage?.completion_tokens ?? '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="px-3 py-2 text-[11px] text-gray-700 whitespace-nowrap">${createdAt ? createdAt.toLocaleString() : ''}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-900">${escapeHtml(String(meta.promptKey || ''))}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-700">${escapeHtml(String(meta.providerKey || ''))}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-700">${escapeHtml(String(meta.model || ''))}</td>
+              <td class="px-3 py-2 text-[11px]">${ev.outcome === 'failure'
+                ? '<span class="px-2 py-0.5 rounded bg-red-100 text-red-700">failure</span>'
+                : '<span class="px-2 py-0.5 rounded bg-green-100 text-green-700">success</span>'}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-700">${tokensPrompt || tokensCompletion ? `${tokensPrompt}/${tokensCompletion}` : ''}</td>`;
+            tbody.appendChild(tr);
+          }
+        }
+        const page = Number(data?.page || 1);
+        const pageSize = Number(data?.pageSize || 20);
+        const total = Number(data?.total || 0);
+        const maxPage = total ? Math.ceil(total / pageSize) : 1;
+        document.getElementById('auditPageLabel').textContent = `Page ${page} of ${maxPage}`;
+        document.getElementById('btnAuditPrev').disabled = page <= 1;
+        document.getElementById('btnAuditNext').disabled = page >= maxPage;
+      }
+
+      async function loadCosts() {
+        const promptKey = document.getElementById('costPromptKey').value.trim();
+        const providerKey = document.getElementById('costProviderKey').value.trim();
+        const model = document.getElementById('costModel').value.trim();
+        const pageSize = Number(document.getElementById('costPageSize').value || 20);
+        const params = new URLSearchParams();
+        params.set('page', String(costPage));
+        params.set('pageSize', String(pageSize));
+        if (promptKey) params.set('promptKey', promptKey);
+        if (providerKey) params.set('providerKey', providerKey);
+        if (model) params.set('model', model);
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/llm/costs?${params.toString()}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.error || 'Failed to load costs');
+          renderCosts(data);
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+
+      function formatUsd(value) {
+        if (value === null || value === undefined || value === '') return '';
+        const num = Number(value);
+        if (!Number.isFinite(num)) return '';
+        if (num === 0) return '0';
+        if (Math.abs(num) < 0.000001) return num.toExponential(2);
+        return num.toFixed(6);
+      }
+
+      function renderCosts(data) {
+        const tbody = document.getElementById('costTable');
+        tbody.innerHTML = '';
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (!items.length) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="7" class="px-3 py-4 text-center text-xs text-gray-500">No cost entries.</td>`;
+          tbody.appendChild(tr);
+        } else {
+          for (const row of items) {
+            const createdAt = row.createdAt ? new Date(row.createdAt) : null;
+            const tokensIn = row.prompt_tokens ?? '';
+            const tokensOut = row.completion_tokens ?? '';
+            const tokensTotal = row.total_tokens ?? '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="px-3 py-2 text-[11px] text-gray-700 whitespace-nowrap">${createdAt ? createdAt.toLocaleString() : ''}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-900">${escapeHtml(String(row.promptKey || ''))}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-700">${escapeHtml(String(row.providerKey || ''))}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-700">${escapeHtml(String(row.model || ''))}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-700">${tokensIn || tokensOut || tokensTotal ? `${tokensIn}/${tokensOut}/${tokensTotal}` : ''}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-700">${formatUsd(row.cost)}</td>
+              <td class="px-3 py-2 text-[11px] text-gray-500">${escapeHtml(String(row.cost_source || ''))}</td>`;
+            tbody.appendChild(tr);
+          }
+        }
+        const page = Number(data?.page || 1);
+        const pageSize = Number(data?.pageSize || 20);
+        const total = Number(data?.total || 0);
+        const maxPage = total ? Math.ceil(total / pageSize) : 1;
+        document.getElementById('costPageLabel').textContent = `Page ${page} of ${maxPage}`;
+        document.getElementById('btnCostPrev').disabled = page <= 1;
+        document.getElementById('btnCostNext').disabled = page >= maxPage;
+      }
+
+      document.getElementById('btnAddProvider').addEventListener('click', () => openProviderEditor(null));
+      document.getElementById('btnCancelProvider').addEventListener('click', closeProviderEditor);
+      document.getElementById('btnSaveProvider').addEventListener('click', createOrUpdateProviderFromForm);
+      document.getElementById('providerPreset').addEventListener('change', applyProviderPresetDefaults);
+
+      document.getElementById('btnAddPrompt').addEventListener('click', () => openPromptEditor(null));
+      document.getElementById('btnCancelPrompt').addEventListener('click', closePromptEditor);
+      document.getElementById('btnSavePrompt').addEventListener('click', createOrUpdatePromptFromForm);
+
+      document.getElementById('btnRunTest').addEventListener('click', runTest);
+
+      document.getElementById('btnAuditReload').addEventListener('click', () => { auditPage = 1; loadAudit(); });
+      document.getElementById('btnAuditPrev').addEventListener('click', () => { if (auditPage > 1) { auditPage -= 1; loadAudit(); } });
+      document.getElementById('btnAuditNext').addEventListener('click', () => { auditPage += 1; loadAudit(); });
+
+      document.getElementById('btnCostSearch').addEventListener('click', () => { costPage = 1; loadCosts(); });
+      document.getElementById('btnCostPrev').addEventListener('click', () => { if (costPage > 1) { costPage -= 1; loadCosts(); } });
+      document.getElementById('btnCostNext').addEventListener('click', () => { costPage += 1; loadCosts(); });
+
+      window.editProvider = (key) => openProviderEditor(key);
+      window.deleteProvider = deleteProvider;
+      window.editPrompt = (key) => openPromptEditor(key);
+      window.deletePrompt = deletePrompt;
+
+      (async function init() {
+        await loadConfig();
+        await loadAudit();
+      })();
+    </script>
+  </body>
+</html>

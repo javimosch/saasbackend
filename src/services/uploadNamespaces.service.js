@@ -191,6 +191,43 @@ async function resolveNamespace(namespaceKey) {
   return clamped;
 }
 
+async function upsertNamespace(namespaceKey, payload) {
+  const key = String(namespaceKey || '').trim();
+  if (!key) {
+    const err = new Error('namespaceKey is required');
+    err.code = 'VALIDATION_ERROR';
+    throw err;
+  }
+
+  const normalized = normalizePayload(key, payload || {});
+  const settingKey = getSettingKey(key);
+
+  const existing = await GlobalSetting.findOne({ key: settingKey, type: 'json' });
+
+  const setting = existing
+    ? await GlobalSetting.findOneAndUpdate(
+        { key: settingKey, type: 'json' },
+        { $set: { value: JSON.stringify(normalized) } },
+        { new: true }
+      )
+    : await GlobalSetting.create({
+        key: settingKey,
+        type: 'json',
+        public: false,
+        description: `Upload namespace: ${key}`,
+        value: JSON.stringify(normalized),
+      });
+
+  globalSettingsService.clearSettingsCache();
+
+  const resolved = await resolveNamespace(key);
+  return {
+    ...resolved,
+    createdAt: setting.createdAt,
+    updatedAt: setting.updatedAt,
+  };
+}
+
 function validateUpload({ namespaceConfig, contentType, sizeBytes, hardCapMaxFileSizeBytes }) {
   const errors = [];
 
@@ -281,6 +318,7 @@ module.exports = {
   getSettingKey,
   listNamespaces,
   resolveNamespace,
+  upsertNamespace,
   validateUpload,
   computeVisibility,
   generateObjectKey,
