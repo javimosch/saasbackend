@@ -37,11 +37,11 @@ function createMiddleware(options = {}) {
 
   // Database connection
   const mongoUri =
-    options.mongodbUri || options.dbConnection || process.env.MONGODB_URI;
+    options.mongodbUri || options.dbConnection || process.env.MONGODB_URI || process.env.MONGO_URI;
 
   if (!mongoUri && mongoose.connection.readyState !== 1) {
     console.warn(
-      "⚠️  Warning: No MongoDB connection provided to middleware. Set MONGODB_URI in environment or pass mongodbUri/dbConnection option.",
+      "⚠️  Warning: No MongoDB connection provided to middleware. Set MONGODB_URI or MONGO_URI in environment or pass mongodbUri/dbConnection option.",
     );
   } else if (mongoUri && mongoose.connection.readyState !== 1) {
     const connectionOptions = options.mongooseOptions || {
