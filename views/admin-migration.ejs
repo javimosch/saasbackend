@@ -23,7 +23,15 @@
               <h2 class="font-semibold mb-3">Environments</h2>
 
               <div class="grid grid-cols-1 gap-3">
-                <label class="text-sm font-medium">Key (suffix or full ENV_CONF_*)</label>
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-medium">Key (suffix or full ENV_CONF_*)</label>
+                  <div class="flex items-center gap-2">
+                    <select id="envSelect" class="border rounded px-2 py-1 text-xs">
+                      <option value="">(new)</option>
+                    </select>
+                    <button id="btnNewEnv" class="text-xs text-blue-600 hover:underline" type="button">New</button>
+                  </div>
+                </div>
                 <input id="envKey" class="border rounded px-3 py-2" placeholder="staging" />
 
                 <label class="text-sm font-medium">Name</label>
@@ -35,9 +43,82 @@
                 <label class="text-sm font-medium">Description</label>
                 <input id="envDesc" class="border rounded px-3 py-2" placeholder="Optional" />
 
+                <div class="border rounded p-3 bg-gray-50">
+                  <div class="text-sm font-semibold flex items-center justify-between">
+                    <span>Assets target (where migrated files will be written)</span>
+                    <span class="text-[11px] text-gray-500">Defaults to fs_local → uploads/</span>
+                  </div>
+                  <div class="mt-2 grid grid-cols-1 gap-2">
+                    <label class="text-xs font-medium">Type</label>
+                    <select id="assetType" class="border rounded px-2 py-1 text-sm">
+                      <option value="">(none / infer from target DB)</option>
+                      <option value="fs_local">fs_local</option>
+                      <option value="fs_remote">fs_remote (SSH/SFTP)</option>
+                      <option value="s3">s3</option>
+                    </select>
+
+                    <div id="assetFsLocal" class="hidden">
+                      <label class="text-xs font-medium">Base dir</label>
+                      <input id="assetFsBaseDir" class="border rounded px-2 py-1 text-sm w-full" placeholder="uploads" />
+                    </div>
+
+                    <div id="assetFsRemote" class="hidden">
+                      <label class="text-xs font-medium">Host</label>
+                      <input id="assetSshHost" class="border rounded px-2 py-1 text-sm w-full" placeholder="example.com" />
+
+                      <label class="text-xs font-medium mt-2">Port</label>
+                      <input id="assetSshPort" class="border rounded px-2 py-1 text-sm w-full" placeholder="22" />
+
+                      <label class="text-xs font-medium mt-2">Username</label>
+                      <input id="assetSshUser" class="border rounded px-2 py-1 text-sm w-full" placeholder="ubuntu" />
+
+                      <label class="text-xs font-medium mt-2">Remote base dir</label>
+                      <input id="assetSshBaseDir" class="border rounded px-2 py-1 text-sm w-full" placeholder="/var/app/uploads" />
+
+                      <label class="text-xs font-medium mt-2">Private key (PEM)</label>
+                      <textarea id="assetSshKey" class="border rounded px-2 py-1 text-xs font-mono w-full" rows="5" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+
+                      <label class="text-xs font-medium mt-2">Passphrase (optional)</label>
+                      <input id="assetSshPass" class="border rounded px-2 py-1 text-sm w-full" placeholder="" />
+                    </div>
+
+                    <div id="assetS3" class="hidden">
+                      <label class="text-xs font-medium">Endpoint</label>
+                      <input id="assetS3Endpoint" class="border rounded px-2 py-1 text-sm w-full" placeholder="https://s3..." />
+
+                      <label class="text-xs font-medium mt-2">Region</label>
+                      <input id="assetS3Region" class="border rounded px-2 py-1 text-sm w-full" placeholder="us-east-1" />
+
+                      <label class="text-xs font-medium mt-2">Bucket</label>
+                      <input id="assetS3Bucket" class="border rounded px-2 py-1 text-sm w-full" placeholder="my-bucket" />
+
+                      <label class="text-xs font-medium mt-2">Access key id</label>
+                      <input id="assetS3Access" class="border rounded px-2 py-1 text-sm w-full" placeholder="" />
+
+                      <label class="text-xs font-medium mt-2">Secret access key</label>
+                      <input id="assetS3Secret" class="border rounded px-2 py-1 text-sm w-full" placeholder="" />
+
+                      <label class="inline-flex items-center gap-2 text-xs mt-2">
+                        <input id="assetS3ForcePath" type="checkbox" />
+                        forcePathStyle
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="flex gap-2 pt-2">
                   <button id="btnSaveEnv" class="bg-blue-600 text-white px-3 py-2 rounded">Save</button>
                   <button id="btnTestConn" class="bg-gray-700 text-white px-3 py-2 rounded">Test connection</button>
+                </div>
+
+                <div class="flex gap-2">
+                  <button id="btnTestAssets" class="bg-gray-900 text-white px-3 py-2 rounded">Test target assets</button>
+                  <input id="assetTestKey" class="border rounded px-3 py-2 flex-1" placeholder="Test copy key (e.g. assets/...jpg)" />
+                  <button id="btnTestAssetsCopy" class="bg-gray-900 text-white px-3 py-2 rounded">Test copy to target</button>
+                </div>
+                <div class="text-[11px] text-gray-600 leading-tight">
+                  • “Test target assets” checks connectivity/writeability to the selected target backend (fs_local / fs_remote / s3).<br />
+                  • “Test copy to target” reads the key from the current instance storage and writes to the target backend (fs↔s3↔sftp supported).
                 </div>
 
                 <div id="envMsg" class="text-sm text-gray-600"></div>
@@ -136,6 +217,115 @@
       el.className = isError ? 'text-sm text-red-600' : 'text-sm text-green-700';
     }
 
+    function toggleAssetSections() {
+      const type = document.getElementById('assetType').value;
+      const fsLocal = document.getElementById('assetFsLocal');
+      const fsRemote = document.getElementById('assetFsRemote');
+      const s3 = document.getElementById('assetS3');
+      fsLocal.classList.add('hidden');
+      fsRemote.classList.add('hidden');
+      s3.classList.add('hidden');
+      if (type === 'fs_local') fsLocal.classList.remove('hidden');
+      if (type === 'fs_remote') fsRemote.classList.remove('hidden');
+      if (type === 's3') s3.classList.remove('hidden');
+    }
+
+    function buildAssetsTargetPayload() {
+      const type = document.getElementById('assetType').value;
+      if (!type) return undefined;
+
+      if (type === 'fs_local') {
+        return {
+          type,
+          fs: {
+            baseDir: document.getElementById('assetFsBaseDir').value,
+          }
+        };
+      }
+
+      if (type === 'fs_remote') {
+        return {
+          type,
+          ssh: {
+            host: document.getElementById('assetSshHost').value,
+            port: document.getElementById('assetSshPort').value,
+            username: document.getElementById('assetSshUser').value,
+            baseDir: document.getElementById('assetSshBaseDir').value,
+            privateKeyPem: document.getElementById('assetSshKey').value,
+            passphrase: document.getElementById('assetSshPass').value,
+          }
+        };
+      }
+
+      if (type === 's3') {
+        return {
+          type,
+          s3: {
+            endpoint: document.getElementById('assetS3Endpoint').value,
+            region: document.getElementById('assetS3Region').value,
+            bucket: document.getElementById('assetS3Bucket').value,
+            accessKeyId: document.getElementById('assetS3Access').value,
+            secretAccessKey: document.getElementById('assetS3Secret').value,
+            forcePathStyle: document.getElementById('assetS3ForcePath').checked,
+          }
+        };
+      }
+
+      return undefined;
+    }
+
+    function loadEnvIntoForm(env) {
+      document.getElementById('envKey').value = env?.key?.replace(/^ENV_CONF_/, '') || '';
+      document.getElementById('envName').value = env?.name || '';
+      document.getElementById('envConn').value = env?.connectionString || '';
+      document.getElementById('envDesc').value = env?.description || '';
+
+      const at = env?.assetsTarget || {};
+      const type = at?.type || '';
+      document.getElementById('assetType').value = type || '';
+      document.getElementById('assetFsBaseDir').value = at?.fs?.baseDir || '';
+      document.getElementById('assetSshHost').value = at?.ssh?.host || '';
+      document.getElementById('assetSshPort').value = at?.ssh?.port || '';
+      document.getElementById('assetSshUser').value = at?.ssh?.username || '';
+      document.getElementById('assetSshBaseDir').value = at?.ssh?.baseDir || '';
+      document.getElementById('assetSshKey').value = at?.ssh?.privateKeyPem || '';
+      document.getElementById('assetSshPass').value = at?.ssh?.passphrase || '';
+      document.getElementById('assetS3Endpoint').value = at?.s3?.endpoint || '';
+      document.getElementById('assetS3Region').value = at?.s3?.region || '';
+      document.getElementById('assetS3Bucket').value = at?.s3?.bucket || '';
+      document.getElementById('assetS3Access').value = at?.s3?.accessKeyId || '';
+      document.getElementById('assetS3Secret').value = at?.s3?.secretAccessKey || '';
+      document.getElementById('assetS3ForcePath').checked = !!at?.s3?.forcePathStyle;
+      toggleAssetSections();
+    }
+
+    function resetEnvForm() {
+      loadEnvIntoForm({});
+      document.getElementById('envSelect').value = '';
+      document.getElementById('envMsg').textContent = '';
+    }
+
+    async function loadEnvDetails(key) {
+      if (!key) {
+        resetEnvForm();
+        return;
+      }
+      try {
+        // Prefer GET /environments/:key, fallback to list with include=full if needed
+        const res = await fetch(`${API_BASE}/api/admin/migration/environments/${encodeURIComponent(key)}`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (data?.environment) loadEnvIntoForm(data.environment);
+          return;
+        }
+        // fallback to list?envKey=...&include=full (returns environment)
+        const data = await jsonFetch(`/api/admin/migration/environments?envKey=${encodeURIComponent(key)}&include=full`);
+        if (data?.environment) loadEnvIntoForm(data.environment);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     async function refreshEnvs() {
       const list = document.getElementById('envList');
       const data = await jsonFetch('/api/admin/migration/environments');
@@ -152,6 +342,21 @@
           envSelect.appendChild(opt);
         });
         if (current) envSelect.value = current;
+      }
+
+      const envFormSelect = document.getElementById('envSelect');
+      if (envFormSelect) {
+        const current = envFormSelect.value;
+        envFormSelect.innerHTML = '<option value="">(new)</option>';
+        state.environments.forEach((e) => {
+          const opt = document.createElement('option');
+          opt.value = e.key;
+          opt.textContent = `${e.name || e.key} (${e.key})`;
+          envFormSelect.appendChild(opt);
+        });
+        if (current && state.environments.find((e) => e.key === current)) {
+          envFormSelect.value = current;
+        }
       }
 
       list.textContent = JSON.stringify(data, null, 2);
@@ -415,9 +620,10 @@
         const name = document.getElementById('envName').value;
         const connectionString = document.getElementById('envConn').value;
         const description = document.getElementById('envDesc').value;
+        const assetsTarget = buildAssetsTargetPayload();
         await jsonFetch('/api/admin/migration/environments', {
           method: 'POST',
-          body: JSON.stringify({ envKey, name, connectionString, description })
+          body: JSON.stringify({ envKey, name, connectionString, description, assetsTarget })
         });
         setMsg(msg, 'Saved', false);
         await refreshEnvs();
@@ -435,6 +641,35 @@
           body: JSON.stringify({ envKey })
         });
         setMsg(msg, 'Connection OK', false);
+      } catch (err) {
+        setMsg(msg, err.message, true);
+      }
+    });
+
+    document.getElementById('btnTestAssets').addEventListener('click', async () => {
+      const msg = document.getElementById('envMsg');
+      try {
+        const envKey = document.getElementById('envKey').value;
+        const res = await jsonFetch('/api/admin/migration/test-assets', {
+          method: 'POST',
+          body: JSON.stringify({ envKey })
+        });
+        setMsg(msg, `Assets OK (${res.endpointType})`, false);
+      } catch (err) {
+        setMsg(msg, err.message, true);
+      }
+    });
+
+    document.getElementById('btnTestAssetsCopy').addEventListener('click', async () => {
+      const msg = document.getElementById('envMsg');
+      try {
+        const envKey = document.getElementById('envKey').value;
+        const key = document.getElementById('assetTestKey').value;
+        const res = await jsonFetch('/api/admin/migration/test-assets-copy', {
+          method: 'POST',
+          body: JSON.stringify({ envKey, key })
+        });
+        setMsg(msg, res.ok ? 'Test copy OK' : 'Test copy failed', !res.ok);
       } catch (err) {
         setMsg(msg, err.message, true);
       }
@@ -458,7 +693,23 @@
       }
     });
 
+    document.getElementById('envSelect').addEventListener('change', async (e) => {
+      const key = e.target.value;
+      if (!key) {
+        resetEnvForm();
+        return;
+      }
+      await loadEnvDetails(key);
+    });
+
+    document.getElementById('btnNewEnv').addEventListener('click', (e) => {
+      e.preventDefault();
+      resetEnvForm();
+    });
+
     Promise.all([refreshEnvs(), refreshModels()]).catch(() => {});
+    document.getElementById('assetType').addEventListener('change', toggleAssetSections);
+    toggleAssetSections();
   </script>
 </body>
 </html>

@@ -49,8 +49,15 @@ function safeJsonParse(value, fallback) {
 
 exports.listEnvironments = async (req, res) => {
   try {
-    const envs = await migrationService.listEnvironments();
-    res.json({ environments: envs });
+    const { envKey, include } = req.query || {};
+    if (envKey && include === 'full') {
+      const env = await migrationService.getEnvironmentConfig(envKey);
+      if (!env) return res.status(404).json({ error: 'Environment not found' });
+      return res.json({ environment: env, environments: [env] });
+    }
+
+    const environments = await migrationService.listEnvironments();
+    res.json({ environments });
   } catch (e) {
     res.status(500).json({ error: e?.message ? String(e.message) : 'Failed to list environments' });
   }
@@ -142,11 +149,55 @@ exports.preview = async (req, res) => {
 
 exports.upsertEnvironment = async (req, res) => {
   try {
-    const { envKey, name, connectionString, description } = req.body || {};
-    const saved = await migrationService.upsertEnvironment(envKey, { name, connectionString, description });
+    const { envKey, name, connectionString, description, assetsTarget } = req.body || {};
+    const saved = await migrationService.upsertEnvironment(envKey, {
+      name,
+      connectionString,
+      description,
+      assetsTarget,
+    });
     res.json({ environment: saved });
   } catch (e) {
     res.status(e.status || 500).json({ error: e?.message ? String(e.message) : 'Failed to save environment' });
+  }
+};
+
+exports.getEnvironment = async (req, res) => {
+  try {
+    const { envKey } = req.params || {};
+    if (!envKey) return res.status(400).json({ error: 'envKey is required' });
+    const env = await migrationService.getEnvironmentConfig(envKey);
+    if (!env) return res.status(404).json({ error: 'Environment not found' });
+    res.json({ environment: env });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e?.message ? String(e.message) : 'Failed to load environment' });
+  }
+};
+
+exports.testAssetsTarget = async (req, res) => {
+  try {
+    const { envKey } = req.body || {};
+    if (!envKey) return res.status(400).json({ error: 'envKey is required' });
+    const result = await migrationService.testAssetsTarget({ targetEnvKey: envKey });
+    res.json(result);
+  } catch (e) {
+    res.status(e.status || 400).json({ error: e?.message ? String(e.message) : 'Assets test failed' });
+  }
+};
+
+exports.testAssetsCopyKey = async (req, res) => {
+  try {
+    const { envKey, key, dryRun } = req.body || {};
+    if (!envKey) return res.status(400).json({ error: 'envKey is required' });
+    if (!key) return res.status(400).json({ error: 'key is required' });
+    const result = await migrationService.testAssetsCopyKey({
+      targetEnvKey: envKey,
+      key,
+      dryRun: !!dryRun,
+    });
+    res.json(result);
+  } catch (e) {
+    res.status(e.status || 400).json({ error: e?.message ? String(e.message) : 'Assets copy test failed' });
   }
 };
 

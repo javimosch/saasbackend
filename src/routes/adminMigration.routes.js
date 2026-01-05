@@ -13,6 +13,12 @@ router.get(
 );
 
 router.get(
+  '/environments/:envKey',
+  basicAuth,
+  adminMigrationController.getEnvironment,
+);
+
+router.get(
   '/models',
   basicAuth,
   adminMigrationController.listModels,
@@ -49,6 +55,20 @@ router.post(
   basicAuth,
   auditMiddleware('admin.migration.test_connection', { entityType: 'Migration' }),
   adminMigrationController.testConnection,
+);
+
+router.post(
+  '/test-assets',
+  basicAuth,
+  auditMiddleware('admin.migration.test_assets', { entityType: 'Migration' }),
+  adminMigrationController.testAssetsTarget,
+);
+
+router.post(
+  '/test-assets-copy',
+  basicAuth,
+  auditMiddleware('admin.migration.test_assets_copy', { entityType: 'Migration' }),
+  adminMigrationController.testAssetsCopyKey,
 );
 
 router.post(
