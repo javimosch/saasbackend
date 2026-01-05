@@ -57,8 +57,15 @@ async function resolveTargetEndpointFromEnvConfig(envCfg) {
   throw err;
 }
 
+function normalizeKey(key) {
+  let s = String(key || '').trim();
+  while (s.startsWith('/')) s = s.slice(1);
+  if (s.startsWith('uploads/')) s = s.slice('uploads/'.length);
+  return s;
+}
+
 async function copyKeys({ keys, sourceEndpoint, targetEndpoint, dryRun = false, batchSize = 10 } = {}) {
-  const list = Array.isArray(keys) ? keys.map((k) => String(k || '').trim()).filter(Boolean) : [];
+  const list = Array.isArray(keys) ? keys.map((k) => normalizeKey(k)).filter(Boolean) : [];
 
   const result = {
     ok: true,
