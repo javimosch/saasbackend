@@ -185,6 +185,7 @@ function createMiddleware(options = {}) {
   router.use("/api/admin/errors", basicAuth, require("./routes/adminErrors.routes"));
   router.use("/api/admin/audit", basicAuth, require("./routes/adminAudit.routes"));
   router.use("/api/admin/llm", require("./routes/adminLlm.routes"));
+  router.use("/api/admin/ejs-virtual", require("./routes/adminEjsVirtual.routes"));
   router.use("/api/settings", require("./routes/globalSettings.routes"));
   router.use("/api/feature-flags", require("./routes/featureFlags.routes"));
   router.use("/api/json-configs", require("./routes/jsonConfigs.routes"));
@@ -261,6 +262,31 @@ function createMiddleware(options = {}) {
       "views",
       "admin-llm.ejs",
     );
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(
+          template,
+          {
+            baseUrl: req.baseUrl,
+          },
+          {
+            filename: templatePath,
+          },
+        );
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  router.get("/admin/ejs-virtual", basicAuth, (req, res) => {
+    const templatePath = path.join(__dirname, "..", "views", "admin-ejs-virtual.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
         console.error("Error reading template:", err);

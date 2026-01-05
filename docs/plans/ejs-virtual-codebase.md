@@ -38,6 +38,21 @@ Primary initial integration target: **home page only** in host app (e.g. `apres-
   - ensure TTL purge (avoid unbounded growth)
   - avoid retaining multiple large strings indefinitely
 
+### Vibe coding: provider + model selection + fallbacks
+- Admin UI must allow selecting:
+  - LLM provider (OpenAI-compatible) and model
+  - store last selection in browser localStorage for UX
+- Server must resolve defaults in this order:
+  1. UI-requested `providerKey` + `model` (if present)
+  2. Global settings defaults (DB):
+     - `ejsVirtual.ai.providerKey`
+     - `ejsVirtual.ai.model`
+  3. Environment variables:
+     - `DEFAULT_LLM_PROVIDER_KEY` (optional)
+     - `DEFAULT_LLM_MODEL` (optional)
+  4. Hard default model: `x-ai/grok-code-fast-1`
+- If provider is missing/disabled/misconfigured, fail fast with a clear error (do not silently switch providers).
+
 ## Scope and non-goals (v1)
 
 ### In scope

@@ -51,6 +51,7 @@ const saasbackend = {
     uploadNamespaces: require("./src/services/uploadNamespaces.service"),
     llm: require("./src/services/llm.service"),
     migration: require("./src/services/migration.service"),
+    ejsVirtual: require("./src/services/ejsVirtual.service"),
   },
   models: {
     ActionEvent: require("./src/models/ActionEvent"),
@@ -72,6 +73,9 @@ const saasbackend = {
     StripeWebhookEvent: require("./src/models/StripeWebhookEvent"),
     User: require("./src/models/User"),
     WaitingList: require("./src/models/WaitingList"),
+    VirtualEjsFile: require("./src/models/VirtualEjsFile"),
+    VirtualEjsFileVersion: require("./src/models/VirtualEjsFileVersion"),
+    VirtualEjsGroupChange: require("./src/models/VirtualEjsGroupChange"),
   },
   helpers: {
     auth: require("./src/middleware/auth"),

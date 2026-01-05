@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EJS Virtual Codebase - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100">
+    <div class="min-h-screen">
+      <div class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900">EJS Virtual Codebase</h1>
+              <p class="text-sm text-gray-600 mt-1">DB overrides + Vibe coding + History/Rollback + Cache control.</p>
+            </div>
+            <div class="flex items-center gap-4">
+              <a href="<%= (baseUrl || '') %>/admin/test" class="text-blue-600 hover:text-blue-800">← Back to API Test</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="flex flex-wrap gap-3 items-end">
+            <div class="flex-1 min-w-[260px]">
+              <label class="block text-xs font-medium text-gray-600 mb-1">File</label>
+              <select id="fileSelect" class="w-full border rounded px-2 py-2 text-sm"></select>
+            </div>
+
+            <div class="min-w-[200px]">
+              <label class="block text-xs font-medium text-gray-600 mb-1">LLM Provider Key</label>
+              <input id="providerKey" class="w-full border rounded px-2 py-2 text-sm" placeholder="e.g. openrouter" />
+            </div>
+
+            <div class="min-w-[260px]">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Model</label>
+              <input id="model" class="w-full border rounded px-2 py-2 text-sm" placeholder="e.g. x-ai/grok-code-fast-1" />
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="btnReload" class="px-3 py-2 bg-gray-200 text-gray-900 rounded text-sm">Reload</button>
+              <button id="btnClearCache" class="px-3 py-2 bg-orange-600 text-white rounded text-sm">Clear Cache</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="font-semibold text-gray-900">Editor</h2>
+              <div class="flex gap-2">
+                <button id="btnSave" class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">Save Override</button>
+                <button id="btnRevert" class="px-3 py-1.5 bg-gray-800 text-white rounded text-sm">Revert to Default</button>
+              </div>
+            </div>
+            <textarea id="editor" class="w-full h-[520px] border rounded p-2 font-mono text-xs"></textarea>
+          </div>
+
+          <div class="space-y-4">
+            <div class="bg-white rounded-lg shadow p-4">
+              <h2 class="font-semibold text-gray-900 mb-2">Vibe coding</h2>
+              <textarea id="prompt" class="w-full h-28 border rounded p-2 text-sm" placeholder="Describe the change you want..."></textarea>
+              <div class="mt-2 flex justify-end gap-2">
+                <button id="btnVibe" class="px-3 py-2 bg-purple-600 text-white rounded text-sm">Run Vibe Edit</button>
+              </div>
+              <div id="vibeResult" class="mt-3 text-xs text-gray-700 whitespace-pre-wrap"></div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-4">
+              <h2 class="font-semibold text-gray-900 mb-2">History (latest 50)</h2>
+              <div id="history" class="space-y-2 max-h-[320px] overflow-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
+
+      const STORAGE_KEYS = {
+        providerKey: 'ejsVirtual.providerKey',
+        model: 'ejsVirtual.model',
+      };
+
+      let files = [];
+      let selectedPath = null;
+
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function showMessage(el, msg) {
+        el.textContent = msg;
+      }
+
+      function loadSettings() {
+        const pk = localStorage.getItem(STORAGE_KEYS.providerKey) || '';
+        const model = localStorage.getItem(STORAGE_KEYS.model) || '';
+        document.getElementById('providerKey').value = pk;
+        document.getElementById('model').value = model;
+      }
+
+      function saveSettings() {
+        localStorage.setItem(STORAGE_KEYS.providerKey, document.getElementById('providerKey').value.trim());
+        localStorage.setItem(STORAGE_KEYS.model, document.getElementById('model').value.trim());
+      }
+
+      async function fetchFiles() {
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/files`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to list files');
+        files = data.items || [];
+        const select = document.getElementById('fileSelect');
+        select.innerHTML = '';
+        files.forEach((f) => {
+          const opt = document.createElement('option');
+          opt.value = f.path;
+          opt.textContent = `${f.path}${f.enabled ? ' (override)' : ''}${f.integrated ? ' [integrated]' : ''}`;
+          select.appendChild(opt);
+        });
+        if (!selectedPath && files.length) {
+          selectedPath = files[0].path;
+        }
+        select.value = selectedPath;
+      }
+
+      async function loadFile(p) {
+        selectedPath = p;
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/file?path=${encodeURIComponent(p)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to load file');
+        const editor = document.getElementById('editor');
+        editor.value = (data.db && data.db.enabled) ? (data.db.content || '') : (data.fs.content || '');
+        await loadHistory(p);
+      }
+
+      async function loadHistory(p) {
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/history?path=${encodeURIComponent(p)}`);
+        const data = await res.json();
+        const container = document.getElementById('history');
+        container.innerHTML = '';
+        if (!res.ok) {
+          container.innerHTML = `<div class="text-xs text-red-600">${escapeHtml(data?.error || 'Failed to load history')}</div>`;
+          return;
+        }
+        (data.versions || []).forEach((v) => {
+          const row = document.createElement('div');
+          row.className = 'border rounded p-2 text-xs';
+          row.innerHTML = `
+            <div class="flex justify-between gap-2">
+              <div>
+                <div class="font-semibold">${escapeHtml(v.source || '')}</div>
+                <div class="text-gray-500">${escapeHtml(new Date(v.createdAt).toLocaleString())}</div>
+                <div class="text-gray-700">${escapeHtml(v.description || '')}</div>
+              </div>
+              <button class="px-2 py-1 bg-gray-100 rounded" data-version-id="${escapeHtml(v._id)}">Rollback</button>
+            </div>
+          `;
+          row.querySelector('button').onclick = () => rollback(v._id);
+          container.appendChild(row);
+        });
+      }
+
+      async function saveOverride() {
+        if (!selectedPath) return;
+        const content = document.getElementById('editor').value;
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/file?path=${encodeURIComponent(selectedPath)}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, enabled: true, description: 'Manual save' }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to save');
+        await fetchFiles();
+        await loadFile(selectedPath);
+      }
+
+      async function revertToDefault() {
+        if (!selectedPath) return;
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/file/revert?path=${encodeURIComponent(selectedPath)}`,
+          { method: 'POST' }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to revert');
+        await fetchFiles();
+        await loadFile(selectedPath);
+      }
+
+      async function rollback(versionId) {
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/rollback`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ versionId }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to rollback');
+        await fetchFiles();
+        await loadFile(selectedPath);
+      }
+
+      async function runVibe() {
+        if (!selectedPath) return;
+        saveSettings();
+        const prompt = document.getElementById('prompt').value;
+        const providerKey = document.getElementById('providerKey').value.trim();
+        const model = document.getElementById('model').value.trim();
+
+        const out = document.getElementById('vibeResult');
+        showMessage(out, 'Running...');
+
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/vibe`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, paths: [selectedPath], providerKey, model }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          showMessage(out, data?.error || 'Vibe failed');
+          return;
+        }
+        showMessage(out, `Applied via provider=${data.providerKey} model=${data.model}\nGroup=${data.group?.title || ''}`);
+        await fetchFiles();
+        await loadFile(selectedPath);
+      }
+
+      async function clearCache() {
+        const res = await fetch(`${API_BASE}/api/admin/ejs-virtual/cache/clear`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to clear cache');
+      }
+
+      async function bootstrap() {
+        loadSettings();
+        await fetchFiles();
+        const select = document.getElementById('fileSelect');
+        select.onchange = async () => {
+          await loadFile(select.value);
+        };
+        document.getElementById('btnReload').onclick = async () => {
+          await fetchFiles();
+          await loadFile(selectedPath);
+        };
+        document.getElementById('btnSave').onclick = saveOverride;
+        document.getElementById('btnRevert').onclick = revertToDefault;
+        document.getElementById('btnVibe').onclick = runVibe;
+        document.getElementById('btnClearCache').onclick = clearCache;
+
+        if (selectedPath) {
+          await loadFile(selectedPath);
+        }
+      }
+
+      bootstrap().catch((err) => {
+        document.body.innerHTML = `<pre class="p-6 text-red-600">${escapeHtml(err.message || String(err))}</pre>`;
+      });
+    </script>
+  </body>
+</html>
