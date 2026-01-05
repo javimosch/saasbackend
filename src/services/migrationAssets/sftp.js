@@ -80,6 +80,10 @@ async function createSftpEndpoint({ host, port, username, privateKeyPem, passphr
         await end();
       }
     },
+
+    describeKey(key) {
+      return remotePath(key);
+    },
   };
 }
 

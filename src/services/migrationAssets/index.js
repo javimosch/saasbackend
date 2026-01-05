@@ -76,6 +76,7 @@ async function copyKeys({ keys, sourceEndpoint, targetEndpoint, dryRun = false, 
     dryRun: Boolean(dryRun),
     targetType: targetEndpoint?.type || null,
     sourceType: sourceEndpoint?.type || null,
+    details: [],
   };
 
   for (let i = 0; i < list.length; i += batchSize) {
@@ -84,18 +85,40 @@ async function copyKeys({ keys, sourceEndpoint, targetEndpoint, dryRun = false, 
       try {
         const obj = await sourceEndpoint.getObject({ key });
         if (!obj?.body) {
-          result.failed.push({ key, error: 'Source object not found' });
+          result.failed.push({
+            key,
+            error: 'Source object not found',
+            sourcePath: sourceEndpoint.describeKey ? sourceEndpoint.describeKey(key) : null,
+            targetPath: targetEndpoint.describeKey ? targetEndpoint.describeKey(key) : null,
+          });
           result.ok = false;
           return;
         }
         if (dryRun) {
           result.skipped += 1;
+          result.details.push({
+            key,
+            status: 'skipped',
+            sourcePath: sourceEndpoint.describeKey ? sourceEndpoint.describeKey(key) : null,
+            targetPath: targetEndpoint.describeKey ? targetEndpoint.describeKey(key) : null,
+          });
           return;
         }
         await targetEndpoint.putObject({ key, body: obj.body, contentType: obj.contentType || null });
         result.copied += 1;
+        result.details.push({
+          key,
+          status: 'copied',
+          sourcePath: sourceEndpoint.describeKey ? sourceEndpoint.describeKey(key) : null,
+          targetPath: targetEndpoint.describeKey ? targetEndpoint.describeKey(key) : null,
+        });
       } catch (e) {
-        result.failed.push({ key, error: e?.message ? String(e.message) : 'Copy failed' });
+        result.failed.push({
+          key,
+          error: e?.message ? String(e.message) : 'Copy failed',
+          sourcePath: sourceEndpoint.describeKey ? sourceEndpoint.describeKey(key) : null,
+          targetPath: targetEndpoint.describeKey ? targetEndpoint.describeKey(key) : null,
+        });
         result.ok = false;
       }
     }));

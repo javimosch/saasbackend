@@ -14,12 +14,12 @@ function resolveBaseDir(baseDir) {
   return path.join(process.cwd(), raw);
 }
 
-function buildPath(baseDirAbs, key) {
-  return path.join(baseDirAbs, key);
-}
-
 function createFsLocalEndpoint({ baseDir } = {}) {
   const baseDirAbs = resolveBaseDir(baseDir);
+
+  function buildPath(key) {
+    return path.join(baseDirAbs, key);
+  }
 
   return {
     type: 'fs_local',
@@ -34,17 +34,21 @@ function createFsLocalEndpoint({ baseDir } = {}) {
     },
 
     async getObject({ key }) {
-      const filePath = buildPath(baseDirAbs, key);
+      const filePath = buildPath(key);
       if (!fs.existsSync(filePath)) return null;
       const body = fs.readFileSync(filePath);
       return { body, contentType: null };
     },
 
     async putObject({ key, body }) {
-      const filePath = buildPath(baseDirAbs, key);
-      ensureDir(path.dirname(filePath));
-      fs.writeFileSync(filePath, body);
+      const p = buildPath(key);
+      await fs.promises.mkdir(path.dirname(p), { recursive: true });
+      await fs.promises.writeFile(p, body);
       return { ok: true, key };
+    },
+
+    describeKey(key) {
+      return buildPath(key);
     },
   };
 }

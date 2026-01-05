@@ -63,6 +63,10 @@ async function createS3Endpoint({ endpoint, region, bucket, accessKeyId, secretA
       }));
       return { ok: true, bucket: safeBucket, key };
     },
+
+    describeKey(key) {
+      return `s3://${safeBucket}/${key}`;
+    },
   };
 }
 
