@@ -53,14 +53,44 @@
               <h2 class="font-semibold mb-3">Run generic migration</h2>
 
               <div class="grid grid-cols-1 gap-3">
-                <label class="text-sm font-medium">Target envKey</label>
-                <input id="runEnvKey" class="border rounded px-3 py-2" placeholder="ENV_CONF_staging" />
+                <label class="text-sm font-medium">Target environment</label>
+                <select id="runEnvKey" class="border rounded px-3 py-2">
+                  <option value="" selected>Select environment...</option>
+                </select>
 
-                <label class="text-sm font-medium">Model name</label>
-                <input id="runModel" class="border rounded px-3 py-2" placeholder="User" />
+                <label class="text-sm font-medium">Model</label>
+                <select id="runModel" class="border rounded px-3 py-2">
+                  <option value="" selected>Select model...</option>
+                </select>
 
-                <label class="text-sm font-medium">Query JSON (optional)</label>
-                <textarea id="runQuery" class="border rounded px-3 py-2 font-mono text-sm" rows="5" placeholder='{"status":"active"}'></textarea>
+                <div class="border rounded p-3 bg-gray-50">
+                  <div class="flex items-center justify-between">
+                    <div class="text-sm font-semibold">Query builder</div>
+                    <button id="btnAddFilter" class="text-xs text-blue-600 hover:underline" type="button">Add filter</button>
+                  </div>
+                  <div id="qbRows" class="mt-2 space-y-2"></div>
+                </div>
+
+                <label class="text-sm font-medium">Query JSON</label>
+                <textarea id="runQuery" class="border rounded px-3 py-2 font-mono text-sm" rows="6" placeholder='{}'></textarea>
+
+                <div class="border rounded p-3 bg-gray-50">
+                  <div class="flex items-center justify-between">
+                    <div class="text-sm font-semibold">Preview</div>
+                    <button id="btnPreview" class="text-xs text-blue-600 hover:underline" type="button">Preview records</button>
+                  </div>
+                  <div class="mt-2 grid grid-cols-1 gap-2">
+                    <input id="previewSearch" class="border rounded px-2 py-1 text-sm" placeholder="Search (string fields)" />
+                    <div class="flex items-center gap-2">
+                      <button id="previewPrev" class="text-xs px-2 py-1 border rounded">Prev</button>
+                      <div id="previewMeta" class="text-xs text-gray-600">-</div>
+                      <button id="previewNext" class="text-xs px-2 py-1 border rounded">Next</button>
+                    </div>
+                    <div class="overflow-auto max-h-48 border rounded bg-white">
+                      <table class="min-w-full text-xs" id="previewTable"></table>
+                    </div>
+                  </div>
+                </div>
 
                 <label class="inline-flex items-center gap-2 text-sm">
                   <input id="runDry" type="checkbox" />
@@ -80,6 +110,13 @@
 
   <script>
     const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
+
+    const state = {
+      environments: [],
+      models: [],
+      schema: null,
+      preview: { page: 1, pages: 1, limit: 10, total: 0, items: [] },
+    };
 
     async function jsonFetch(path, options) {
       const res = await fetch(API_BASE + path, {
@@ -102,7 +139,227 @@
     async function refreshEnvs() {
       const list = document.getElementById('envList');
       const data = await jsonFetch('/api/admin/migration/environments');
+      state.environments = Array.isArray(data?.environments) ? data.environments : [];
+
+      const envSelect = document.getElementById('runEnvKey');
+      if (envSelect) {
+        const current = envSelect.value;
+        envSelect.innerHTML = '<option value="" selected>Select environment...</option>';
+        state.environments.forEach((e) => {
+          const opt = document.createElement('option');
+          opt.value = e.key;
+          opt.textContent = `${e.name} (${e.key})`;
+          envSelect.appendChild(opt);
+        });
+        if (current) envSelect.value = current;
+      }
+
       list.textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function refreshModels() {
+      const data = await jsonFetch('/api/admin/migration/models');
+      state.models = Array.isArray(data?.models) ? data.models : [];
+
+      const modelSelect = document.getElementById('runModel');
+      if (modelSelect) {
+        const current = modelSelect.value;
+        modelSelect.innerHTML = '<option value="" selected>Select model...</option>';
+        state.models.forEach((m) => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          modelSelect.appendChild(opt);
+        });
+        if (current) modelSelect.value = current;
+      }
+    }
+
+    function safeParseJson(raw, fallback) {
+      try {
+        return JSON.parse(raw);
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function setQueryText(obj) {
+      const el = document.getElementById('runQuery');
+      if (el) el.value = JSON.stringify(obj || {}, null, 2);
+    }
+
+    function getQueryObject() {
+      const raw = document.getElementById('runQuery')?.value || '';
+      const trimmed = raw.trim();
+      if (!trimmed) return {};
+      return safeParseJson(trimmed, null) || {};
+    }
+
+    function renderQueryBuilder() {
+      const qb = document.getElementById('qbRows');
+      if (!qb) return;
+      qb.innerHTML = '';
+
+      const fields = Array.isArray(state.schema?.fields) ? state.schema.fields : [];
+      if (!fields.length) {
+        qb.innerHTML = '<div class="text-xs text-gray-600">Select a model to enable query builder.</div>';
+        return;
+      }
+
+      const current = getQueryObject();
+      const filters = Array.isArray(current.__qb) ? current.__qb : [];
+
+      if (!filters.length) {
+        qb.innerHTML = '<div class="text-xs text-gray-600">No filters yet. Click “Add filter”.</div>';
+        return;
+      }
+
+      filters.forEach((f, idx) => {
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-12 gap-2 items-center';
+
+        const selField = document.createElement('select');
+        selField.className = 'col-span-5 border rounded px-2 py-1 text-xs';
+        fields.forEach((sf) => {
+          const opt = document.createElement('option');
+          opt.value = sf.key;
+          opt.textContent = sf.key;
+          selField.appendChild(opt);
+        });
+        selField.value = f.field || fields[0].key;
+
+        const selOp = document.createElement('select');
+        selOp.className = 'col-span-3 border rounded px-2 py-1 text-xs';
+        ['eq', 'contains', 'in', 'gte', 'lte'].forEach((op) => {
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = op;
+          selOp.appendChild(opt);
+        });
+        selOp.value = f.op || 'eq';
+
+        const input = document.createElement('input');
+        input.className = 'col-span-3 border rounded px-2 py-1 text-xs';
+        input.placeholder = 'value';
+        input.value = f.value || '';
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'col-span-1 text-xs px-2 py-1 border rounded';
+        del.textContent = 'X';
+
+        function update() {
+          const q = getQueryObject();
+          const qbArr = Array.isArray(q.__qb) ? q.__qb : [];
+          qbArr[idx] = { field: selField.value, op: selOp.value, value: input.value };
+          q.__qb = qbArr;
+          setQueryText(q);
+        }
+
+        selField.addEventListener('change', update);
+        selOp.addEventListener('change', update);
+        input.addEventListener('input', update);
+
+        del.addEventListener('click', () => {
+          const q = getQueryObject();
+          const qbArr = Array.isArray(q.__qb) ? q.__qb : [];
+          qbArr.splice(idx, 1);
+          q.__qb = qbArr;
+          setQueryText(q);
+          renderQueryBuilder();
+        });
+
+        row.appendChild(selField);
+        row.appendChild(selOp);
+        row.appendChild(input);
+        row.appendChild(del);
+        qb.appendChild(row);
+      });
+    }
+
+    function qbToMongo(queryObj) {
+      const q = queryObj && typeof queryObj === 'object' ? { ...queryObj } : {};
+      const qb = Array.isArray(q.__qb) ? q.__qb : [];
+      delete q.__qb;
+
+      for (const f of qb) {
+        const field = String(f?.field || '').trim();
+        const op = String(f?.op || 'eq');
+        const rawValue = f?.value;
+        if (!field) continue;
+
+        if (op === 'eq') {
+          q[field] = rawValue;
+        } else if (op === 'contains') {
+          q[field] = { $regex: String(rawValue || ''), $options: 'i' };
+        } else if (op === 'in') {
+          const arr = String(rawValue || '').split(',').map((v) => v.trim()).filter(Boolean);
+          q[field] = { $in: arr };
+        } else if (op === 'gte') {
+          q[field] = { ...(q[field] && typeof q[field] === 'object' ? q[field] : {}), $gte: rawValue };
+        } else if (op === 'lte') {
+          q[field] = { ...(q[field] && typeof q[field] === 'object' ? q[field] : {}), $lte: rawValue };
+        }
+      }
+
+      return q;
+    }
+
+    async function loadSchema(modelName) {
+      if (!modelName) {
+        state.schema = null;
+        renderQueryBuilder();
+        return;
+      }
+      const data = await jsonFetch(`/api/admin/migration/models/${encodeURIComponent(modelName)}/schema`);
+      state.schema = data?.schema || null;
+      renderQueryBuilder();
+    }
+
+    function renderPreviewTable(items) {
+      const table = document.getElementById('previewTable');
+      if (!table) return;
+
+      const rows = Array.isArray(items) ? items : [];
+      if (!rows.length) {
+        table.innerHTML = '<tr><td class="p-2 text-xs text-gray-600">No rows</td></tr>';
+        return;
+      }
+
+      const headers = Object.keys(rows[0]).slice(0, 8);
+      const thead = `<thead><tr>${headers.map((h) => `<th class="text-left p-2 border-b">${h}</th>`).join('')}</tr></thead>`;
+      const tbody = `<tbody>${rows.map((r) => `<tr>${headers.map((h) => {
+        const v = r[h];
+        const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        return `<td class=\"p-2 border-b align-top\">${s.slice(0, 120)}</td>`;
+      }).join('')}</tr>`).join('')}</tbody>`;
+
+      table.innerHTML = thead + tbody;
+    }
+
+    async function runPreview() {
+      const modelName = document.getElementById('runModel')?.value || '';
+      if (!modelName) throw new Error('Select a model first');
+      const search = document.getElementById('previewSearch')?.value || '';
+      const q = getQueryObject();
+      const mongoQuery = qbToMongo(q);
+
+      const data = await jsonFetch('/api/admin/migration/preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          modelName,
+          query: mongoQuery,
+          page: state.preview.page,
+          limit: state.preview.limit,
+          search,
+        }),
+      });
+
+      state.preview.pages = data.pages;
+      state.preview.total = data.total;
+      state.preview.items = data.items;
+      document.getElementById('previewMeta').textContent = `page ${data.page}/${data.pages} • total ${data.total}`;
+      renderPreviewTable(data.items);
     }
 
     document.getElementById('btnRefreshEnvs').addEventListener('click', async (e) => {
@@ -112,6 +369,43 @@
       } catch (err) {
         document.getElementById('envList').textContent = err.message;
       }
+    });
+
+    document.getElementById('runModel').addEventListener('change', async (e) => {
+      try {
+        await loadSchema(e.target.value);
+        // reset qb state in query
+        setQueryText({ __qb: [] });
+        state.preview.page = 1;
+        document.getElementById('previewMeta').textContent = '-';
+        renderPreviewTable([]);
+      } catch (_) {
+        // ignore
+      }
+    });
+
+    document.getElementById('btnAddFilter').addEventListener('click', () => {
+      const q = getQueryObject();
+      const qb = Array.isArray(q.__qb) ? q.__qb : [];
+      qb.push({ field: (state.schema?.fields?.[0]?.key || '_id'), op: 'eq', value: '' });
+      q.__qb = qb;
+      setQueryText(q);
+      renderQueryBuilder();
+    });
+
+    document.getElementById('btnPreview').addEventListener('click', async () => {
+      state.preview.page = 1;
+      await runPreview();
+    });
+
+    document.getElementById('previewPrev').addEventListener('click', async () => {
+      state.preview.page = Math.max(1, state.preview.page - 1);
+      await runPreview();
+    });
+
+    document.getElementById('previewNext').addEventListener('click', async () => {
+      state.preview.page = Math.min(state.preview.pages || 1, state.preview.page + 1);
+      await runPreview();
     });
 
     document.getElementById('btnSaveEnv').addEventListener('click', async () => {
@@ -153,8 +447,7 @@
         const envKey = document.getElementById('runEnvKey').value;
         const modelName = document.getElementById('runModel').value;
         const dryRun = document.getElementById('runDry').checked;
-        const rawQuery = document.getElementById('runQuery').value.trim();
-        const query = rawQuery ? JSON.parse(rawQuery) : {};
+        const query = qbToMongo(getQueryObject());
         const res = await jsonFetch('/api/admin/migration/run', {
           method: 'POST',
           body: JSON.stringify({ envKey, modelName, query, dryRun })
@@ -165,7 +458,7 @@
       }
     });
 
-    refreshEnvs().catch(() => {});
+    Promise.all([refreshEnvs(), refreshModels()]).catch(() => {});
   </script>
 </body>
 </html>
