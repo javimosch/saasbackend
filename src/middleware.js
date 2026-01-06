@@ -28,6 +28,7 @@ let errorCaptureInitialized = false;
  */
 function createMiddleware(options = {}) {
   const router = express.Router();
+  const adminPath = options.adminPath || "/admin";
 
   if (!errorCaptureInitialized) {
     errorCaptureInitialized = true;
@@ -139,7 +140,7 @@ function createMiddleware(options = {}) {
 
   // Serve static files for admin views
   router.use(
-    "/admin/assets",
+    `${adminPath}/assets`,
     express.static(path.join(__dirname, "..", "public")),
   );
 
@@ -166,7 +167,7 @@ function createMiddleware(options = {}) {
   const adminStatsController = require("./controllers/adminStats.controller");
   router.get("/api/admin/stats/overview", basicAuth, adminStatsController.getOverviewStats);
   
-  router.get("/admin/stats/dashboard-home", basicAuth, (req, res) => {
+  router.get(`${adminPath}/stats/dashboard-home`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-dashboard-home.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -174,7 +175,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl }, { filename: templatePath });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);
@@ -224,7 +225,7 @@ function createMiddleware(options = {}) {
   router.use("/public/assets", require("./routes/publicAssets.routes"));
 
   // Admin dashboard (polished view)
-  router.get("/admin", basicAuth, (req, res) => {
+  router.get(adminPath, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-dashboard.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -232,7 +233,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl }, { filename: templatePath });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);
@@ -242,7 +243,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin technical API test page (protected by basic auth)
-  router.get("/admin/api/test", basicAuth, (req, res) => {
+  router.get(`${adminPath}/api/test`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-test.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -254,6 +255,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -268,7 +270,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/migration", basicAuth, (req, res) => {
+  router.get(`${adminPath}/migration`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-migration.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -280,6 +282,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -295,7 +298,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin LLM/AI page (protected by basic auth)
-  router.get("/admin/admin-llm", basicAuth, (req, res) => {
+  router.get(`${adminPath}/admin-llm`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -312,6 +315,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
           },
           {
             filename: templatePath,
@@ -325,7 +329,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/ejs-virtual", basicAuth, (req, res) => {
+  router.get(`${adminPath}/ejs-virtual`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-ejs-virtual.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -337,6 +341,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
           },
           {
             filename: templatePath,
@@ -350,7 +355,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/seo-config", basicAuth, (req, res) => {
+  router.get(`${adminPath}/seo-config`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-seo-config.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -362,6 +367,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -376,7 +382,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/i18n", basicAuth, (req, res) => {
+  router.get(`${adminPath}/i18n`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-i18n.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -384,7 +390,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl }, { filename: templatePath });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);
@@ -393,7 +399,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/i18n/locales", basicAuth, (req, res) => {
+  router.get(`${adminPath}/i18n/locales`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -406,7 +412,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl }, { filename: templatePath });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);
@@ -416,7 +422,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin forms page (protected by basic auth)
-  router.get("/admin/forms", basicAuth, (req, res) => {
+  router.get(`${adminPath}/forms`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-forms.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -428,6 +434,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -443,7 +450,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin feature flags page (protected by basic auth)
-  router.get("/admin/feature-flags", basicAuth, (req, res) => {
+  router.get(`${adminPath}/feature-flags`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -460,6 +467,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -475,7 +483,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin JSON configs page (protected by basic auth)
-  router.get("/admin/json-configs", basicAuth, (req, res) => {
+  router.get(`${adminPath}/json-configs`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -492,6 +500,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -507,7 +516,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin assets page (protected by basic auth)
-  router.get("/admin/assets", basicAuth, (req, res) => {
+  router.get(`${adminPath}/assets`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -524,6 +533,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -539,7 +549,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin waiting list page (protected by basic auth)
-  router.get("/admin/waiting-list", basicAuth, (req, res) => {
+  router.get(`${adminPath}/waiting-list`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -554,6 +564,7 @@ function createMiddleware(options = {}) {
       try {
         const html = ejs.render(template, {
           baseUrl: req.baseUrl,
+          adminPath,
           endpointRegistry,
         });
         res.send(html);
@@ -565,7 +576,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin organizations page (protected by basic auth)
-  router.get("/admin/organizations", basicAuth, (req, res) => {
+  router.get(`${adminPath}/organizations`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -582,6 +593,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -597,7 +609,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin users page (protected by basic auth)
-  router.get("/admin/users", basicAuth, (req, res) => {
+  router.get(`${adminPath}/users`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -614,6 +626,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -629,7 +642,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin notifications page (protected by basic auth)
-  router.get("/admin/notifications", basicAuth, (req, res) => {
+  router.get(`${adminPath}/notifications`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -646,6 +659,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -661,7 +675,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin Stripe pricing page (protected by basic auth)
-  router.get("/admin/stripe-pricing", basicAuth, (req, res) => {
+  router.get(`${adminPath}/stripe-pricing`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -678,6 +692,7 @@ function createMiddleware(options = {}) {
           template,
           {
             baseUrl: req.baseUrl,
+            adminPath,
             endpointRegistry,
           },
           {
@@ -693,7 +708,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin metrics page (protected by basic auth)
-  router.get("/admin/metrics", basicAuth, (req, res) => {
+  router.get(`${adminPath}/metrics`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -708,6 +723,7 @@ function createMiddleware(options = {}) {
       try {
         const html = ejs.render(template, {
           baseUrl: req.baseUrl,
+          adminPath,
           endpointRegistry,
         });
         res.send(html);
@@ -719,7 +735,7 @@ function createMiddleware(options = {}) {
   });
 
   // Admin global settings page (protected by basic auth) - render manually
-  router.get("/admin/global-settings", basicAuth, (req, res) => {
+  router.get(`${adminPath}/global-settings`, basicAuth, (req, res) => {
     const templatePath = path.join(
       __dirname,
       "..",
@@ -732,7 +748,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);
@@ -741,7 +757,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/errors", basicAuth, (req, res) => {
+  router.get(`${adminPath}/errors`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-errors.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -749,7 +765,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl }, { filename: templatePath });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);
@@ -758,7 +774,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/audit", basicAuth, (req, res) => {
+  router.get(`${adminPath}/audit`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-audit.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -766,7 +782,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl }, { filename: templatePath });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);
@@ -775,7 +791,7 @@ function createMiddleware(options = {}) {
     });
   });
 
-  router.get("/admin/coolify-deploy", basicAuth, (req, res) => {
+  router.get(`${adminPath}/coolify-deploy`, basicAuth, (req, res) => {
     const templatePath = path.join(__dirname, "..", "views", "admin-coolify-deploy.ejs");
     fs.readFile(templatePath, "utf8", (err, template) => {
       if (err) {
@@ -783,7 +799,7 @@ function createMiddleware(options = {}) {
         return res.status(500).send("Error loading page");
       }
       try {
-        const html = ejs.render(template, { baseUrl: req.baseUrl }, { filename: templatePath });
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);

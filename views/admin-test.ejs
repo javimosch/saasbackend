@@ -3,306 +3,332 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin API Testing</title>
+  <title>SaaSBackend API Laboratory</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
   <style>
-    .toast {
-      animation: slideIn 0.3s ease-out;
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --accent: #3b82f6;
     }
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    .fade-out {
-      animation: fadeOut 0.3s ease-out forwards;
-    }
-    @keyframes fadeOut {
-      from { opacity: 1; }
-      to { opacity: 0; }
-    }
-
-    .sidebar-group-content[data-collapsed="true"] {
-      display: none;
-    }
-    .sidebar-group-content {
-      padding-left: 1rem;
-    }
-    .sidebar-group-header {
-      cursor: pointer;
-    }
-    .sidebar-group-header .caret {
-      transition: transform 0.2s ease-out;
-    }
-    .sidebar-group-header .caret.down {
-      transform: rotate(90deg);
-    }
+    body { background-color: var(--bg-main); color: var(--text-main); }
+    .toast { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .sidebar-group-content[data-collapsed="true"] { display: none; }
+    .caret { transition: transform 0.2s ease-out; }
+    .caret.down { transform: rotate(90deg); }
+    pre { border-radius: 0.5rem !important; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
   </style>
 </head>
-<body class="bg-gray-100">
-  <div class="flex h-screen">
-    <!-- Vertical Toolbar -->
-    <%- include('partials/admin-test-sidebar') %>
-
-    <!-- Content Area -->
-    <div class="flex-1 p-8 overflow-y-auto">
-      <div id="content" class="max-w-4xl">
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-2xl font-bold mb-4">Welcome to API Testing</h2>
-          <p class="text-gray-600">Select an endpoint from the left sidebar to begin testing.</p>
+<body class="antialiased">
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col h-full">
+      <div class="p-6">
+        <h1 class="text-xl font-bold flex items-center gap-2">
+          <span class="text-blue-500">🧪</span> API Laboratory
+        </h1>
+        <div class="mt-4 relative">
+          <input type="text" id="sidebar-search" placeholder="Search endpoints..." 
+            class="w-full bg-slate-800 border border-slate-700 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
       </div>
       
-      <div class="max-w-4xl">
-        <%- include('partials/footer') %>
+      <nav id="endpoint-sidebar" class="flex-1 overflow-y-auto px-4 custom-scrollbar space-y-2 pb-6">
+        <!-- Endpoints will be rendered here -->
+      </nav>
+
+      <div class="p-4 border-t border-slate-800 bg-slate-900/50">
+        <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
+          <span>SaaSBackend Framework</span>
+          <span class="px-2 py-0.5 bg-slate-800 rounded">v1.2.0</span>
+        </div>
       </div>
-    </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
+      <!-- Top Bar -->
+      <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900/50">
+        <div id="breadcrumb" class="text-sm font-medium text-slate-400">
+          Select an endpoint to begin
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 bg-slate-800 rounded-full px-4 py-1.5 border border-slate-700">
+            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span class="text-xs font-mono">DB CONNECTED</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard/Form Area -->
+      <div id="main-scroll" class="flex-1 overflow-y-auto custom-scrollbar p-8">
+        <div id="content" class="max-w-5xl mx-auto space-y-6">
+          <div class="bg-slate-900 rounded-xl border border-slate-800 p-12 text-center space-y-4">
+            <div class="text-6xl mb-6">🚀</div>
+            <h2 class="text-2xl font-bold">Framework Technical Console</h2>
+            <p class="text-slate-400 max-w-lg mx-auto">
+              Test and debug SaaSBackend internal APIs. Documented endpoints are automatically grouped by service.
+            </p>
+            <div class="grid grid-cols-3 gap-4 pt-8 max-w-2xl mx-auto">
+              <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                <div class="text-blue-400 font-bold mb-1">Secure</div>
+                <div class="text-xs text-slate-500">Basic & JWT support</div>
+              </div>
+              <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                <div class="text-green-400 font-bold mb-1">Fast</div>
+                <div class="text-xs text-slate-500">Instant response</div>
+              </div>
+              <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                <div class="text-purple-400 font-bold mb-1">Local</div>
+                <div class="text-xs text-slate-500">Persistent history</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 
   <!-- Toast Container -->
   <div id="toast-container" class="fixed top-4 right-4 space-y-2 z-50"></div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
   <script>
-    const API_BASE = window.location.origin + "<%= baseUrl %>" || window.location.origin;
+    const API_BASE = window.location.origin + "<%= baseUrl %>";
     const ENDPOINT_REGISTRY = <%- JSON.stringify(endpointRegistry || []) %>;
-    const ADMIN_UI_BASE = "<%= (baseUrl || '') %>" + "/admin";
     
+    let history = JSON.parse(localStorage.getItem('api_history') || '[]');
+
     function showToast(message, type = 'success') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
-      toast.className = `toast px-6 py-4 rounded-lg shadow-lg text-white ${
-        type === 'success' ? 'bg-green-500' : 'bg-red-500'
+      toast.className = `toast px-6 py-4 rounded-lg shadow-2xl text-white font-medium flex items-center gap-3 ${
+        type === 'success' ? 'bg-blue-600' : 'bg-red-600'
       }`;
-      toast.textContent = message;
+      toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${message}`;
       container.appendChild(toast);
-      
       setTimeout(() => {
-        toast.classList.add('fade-out');
+        toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
         setTimeout(() => toast.remove(), 300);
       }, 3000);
     }
 
-    async function makeRequest(endpoint, method, body = null, requiresJWT = false) {
+    async function makeRequest(endpoint, method, body = null, authType = 'none') {
       const headers = { 'Content-Type': 'application/json' };
       
-      if (requiresJWT) {
-        const token = document.getElementById('jwt-input')?.value;
+      if (authType === 'jwt') {
+        const token = document.getElementById('jwt-input')?.value || localStorage.getItem('last_jwt');
         if (!token) {
           showToast('JWT token required', 'error');
           return;
         }
         headers['Authorization'] = `Bearer ${token}`;
+        localStorage.setItem('last_jwt', token);
       }
       
       const options = { method, headers };
       if (body) options.body = JSON.stringify(body);
       
+      const startTime = performance.now();
       try {
         const response = await fetch(`${API_BASE}${endpoint}`, options);
-        const data = await response.json();
+        const duration = Math.round(performance.now() - startTime);
         
-        const responseEl = document.querySelector('#content pre#response');
-        if (response.ok) {
-          showToast('Request successful!', 'success');
-          if (responseEl) responseEl.textContent = JSON.stringify(data, null, 2);
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
         } else {
-          showToast(data.error || 'Request failed', 'error');
-          if (responseEl) responseEl.textContent = JSON.stringify(data, null, 2);
+          data = { text: await response.text() };
         }
+        
+        const responseEl = document.getElementById('response-container');
+        if (responseEl) {
+          responseEl.innerHTML = `<div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-mono ${response.ok ? 'text-green-400' : 'text-red-400'}">
+              STATUS: ${response.status} ${response.statusText} • ${duration}ms
+            </span>
+            <button onclick="copyToClipboard('response-pre')" class="text-xs text-slate-500 hover:text-white">Copy</button>
+          </div>
+          <pre id="response-pre" class="language-json"><code>${JSON.stringify(data, null, 2)}</code></pre>`;
+          Prism.highlightElement(responseEl.querySelector('code'));
+        }
+
+        // Add to history
+        addToHistory({ endpoint, method, status: response.status, timestamp: new Date().toISOString() });
+        
+        if (response.ok) showToast('Request successful!');
+        else showToast(data.error || 'Request failed', 'error');
+        
       } catch (error) {
         showToast(error.message, 'error');
-        const responseEl = document.querySelector('#content pre#response');
-        if (responseEl) responseEl.textContent = error.message;
       }
     }
 
-    function getPathParams(pathTemplate) {
-      const matches = pathTemplate.match(/:[^/]+/g);
-      if (!matches) return [];
-      return matches.map((m) => m.substring(1));
-    }
-
-    function applyPathParams(pathTemplate, params) {
-      let path = pathTemplate;
-      Object.entries(params).forEach(([key, value]) => {
-        path = path.replace(`:${key}`, encodeURIComponent(value));
-      });
-      return path;
+    function addToHistory(item) {
+      history.unshift(item);
+      history = history.slice(0, 10);
+      localStorage.setItem('api_history', JSON.stringify(history));
     }
 
     function renderSidebar() {
       const sidebar = document.getElementById('endpoint-sidebar');
-      if (!sidebar) return;
-
+      const searchValue = document.getElementById('sidebar-search').value.toLowerCase();
       sidebar.innerHTML = '';
 
-      const searchEl = document.getElementById('sidebar-search');
-      const searchValue = (searchEl?.value || '').trim().toLowerCase();
+      ENDPOINT_REGISTRY.forEach(group => {
+        const filteredEndpoints = group.endpoints.filter(ep => 
+          ep.path.toLowerCase().includes(searchValue) || 
+          group.title.toLowerCase().includes(searchValue)
+        );
 
-      ENDPOINT_REGISTRY.forEach((group) => {
-        const groupEl = document.createElement('div');
-        groupEl.className = 'mb-4';
+        if (filteredEndpoints.length === 0) return;
 
-        const headerBtn = document.createElement('button');
-        headerBtn.type = 'button';
-        headerBtn.className = 'w-full flex items-center justify-between text-sm font-semibold text-gray-400 mb-2 px-2 py-1 rounded hover:bg-gray-700 transition sidebar-group-header';
-
-        const headerTitle = document.createElement('span');
-        headerTitle.textContent = group.title;
-        headerBtn.appendChild(headerTitle);
-
-        const caret = document.createElement('span');
-        caret.className = 'text-gray-500 caret';
-        caret.textContent = '▸';
-        headerBtn.appendChild(caret);
-
-        const groupContent = document.createElement('div');
-        groupContent.className = 'sidebar-group-content space-y-1';
-        groupContent.dataset.groupId = group.id;
-        groupContent.dataset.collapsed = 'true';
-
-        headerBtn.onclick = () => {
-          const collapsed = groupContent.dataset.collapsed === 'true';
-          groupContent.dataset.collapsed = collapsed ? 'false' : 'true';
-          caret.className = collapsed ? 'text-gray-500 caret down' : 'text-gray-500 caret';
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'group-container';
+        
+        const header = document.createElement('button');
+        header.className = 'w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors';
+        header.innerHTML = `<span>${group.title}</span><span class="caret">▸</span>`;
+        
+        const content = document.createElement('div');
+        content.className = 'sidebar-group-content space-y-0.5 mt-1';
+        content.dataset.collapsed = searchValue ? 'false' : 'true';
+        
+        header.onclick = () => {
+          const isCollapsed = content.dataset.collapsed === 'true';
+          content.dataset.collapsed = !isCollapsed;
+          header.querySelector('.caret').classList.toggle('down', isCollapsed);
         };
 
-        groupEl.appendChild(headerBtn);
-        groupEl.appendChild(groupContent);
-
-        const dedicatedPages = {
-          'global-settings': { href: `${ADMIN_UI_BASE}/global-settings`, label: '🔧 Settings Manager UI →' },
-          'forms': { href: `${ADMIN_UI_BASE}/forms`, label: '📝 Forms Admin UI →' },
-          'waiting-list': { href: `${ADMIN_UI_BASE}/waiting-list`, label: '📋 Waiting List UI →' },
-          'metrics': { href: `${ADMIN_UI_BASE}/metrics`, label: '📊 Metrics UI →' },
-          'feature-flags': { href: `${ADMIN_UI_BASE}/feature-flags`, label: '🚩 Feature Flags UI →' },
-          'assets': { href: `${ADMIN_UI_BASE}/assets`, label: '📁 Assets Manager UI →' },
-          'i18n': { href: `${ADMIN_UI_BASE}/i18n`, label: '🌐 i18n Manager UI →' },
-          'errors': { href: `${ADMIN_UI_BASE}/errors`, label: '🐞 Error Tracking UI →' },
-          'audit': { href: `${ADMIN_UI_BASE}/audit`, label: '🧾 Audit Log UI →' },
-        };
-
-        if (dedicatedPages[group.id]) {
-          const link = document.createElement('a');
-          link.href = dedicatedPages[group.id].href;
-          link.className = 'block w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition text-green-400';
-          link.textContent = dedicatedPages[group.id].label;
-          groupContent.appendChild(link);
-        }
-
-        const groupSearchText = `${group.title} ${(dedicatedPages[group.id]?.label || '')}`.toLowerCase();
-        let groupMatches = !searchValue || groupSearchText.includes(searchValue);
-
-        group.endpoints.forEach((ep) => {
-          const label = `${ep.method} ${ep.path}`;
-          const matches = !searchValue || label.toLowerCase().includes(searchValue) || groupSearchText.includes(searchValue);
-          if (!matches) return;
-          groupMatches = true;
-
+        filteredEndpoints.forEach(ep => {
           const btn = document.createElement('button');
-          btn.className = 'w-full text-left px-4 py-2 rounded hover:bg-gray-700 transition';
-          btn.textContent = label;
-          btn.onclick = () => showEndpoint(group.id, ep.id);
-          groupContent.appendChild(btn);
+          btn.className = 'w-full text-left px-3 py-2 rounded-md text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3 group';
+          btn.innerHTML = `
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded min-w-[45px] text-center ${getMethodColor(ep.method)}">${ep.method}</span>
+            <span class="truncate">${ep.path.replace('/api/admin', '')}</span>
+          `;
+          btn.onclick = () => showEndpoint(group, ep);
+          content.appendChild(btn);
         });
 
-        if (!groupMatches) return;
-
-        if (searchValue) {
-          groupContent.dataset.collapsed = 'false';
-          caret.className = 'text-gray-500 caret down';
-        }
-
-        sidebar.appendChild(groupEl);
+        groupDiv.appendChild(header);
+        groupDiv.appendChild(content);
+        sidebar.appendChild(groupDiv);
+        
+        if (searchValue) header.querySelector('.caret').classList.add('down');
       });
     }
 
-    function showEndpoint(groupId, endpointId) {
+    function getMethodColor(method) {
+      switch(method) {
+        case 'GET': return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+        case 'POST': return 'bg-green-500/10 text-green-400 border border-green-500/20';
+        case 'PUT': return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20';
+        case 'DELETE': return 'bg-red-500/10 text-red-400 border border-red-500/20';
+        default: return 'bg-slate-500/10 text-slate-400';
+      }
+    }
+
+    function showEndpoint(group, ep) {
+      document.getElementById('breadcrumb').textContent = `${group.title} / ${ep.path}`;
       const content = document.getElementById('content');
-      const group = ENDPOINT_REGISTRY.find((g) => g.id === groupId);
-      const ep = group?.endpoints?.find((e) => e.id === endpointId);
-      if (!content || !ep) return;
-
-      const requiresJWT = ep.auth === 'jwt';
-      const pathParams = getPathParams(ep.path);
-
+      
+      const pathParams = (ep.path.match(/:[^\/]+/g) || []).map(p => p.substring(1));
+      
       content.innerHTML = `
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-2xl font-bold mb-4">${ep.method} ${ep.path}</h2>
-          ${requiresJWT ? `
-            <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4">
-              <p class="text-sm">⚠️ This endpoint requires JWT authentication</p>
+        <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+          <div class="p-6 border-b border-slate-800 bg-slate-800/30 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <span class="px-3 py-1 rounded-md font-bold text-sm ${getMethodColor(ep.method)}">${ep.method}</span>
+              <h2 class="text-xl font-mono font-bold">${ep.path}</h2>
             </div>
-          ` : ''}
-          <form id="endpoint-form">
-            ${requiresJWT ? `
-              <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">JWT Token</label>
-                <textarea id="jwt-input" class="w-full border rounded px-3 py-2" rows="4" required></textarea>
+            <div class="flex items-center gap-2">
+              <button onclick="copyCurl()" class="text-xs px-3 py-1.5 bg-slate-800 rounded hover:bg-slate-700 transition">Copy cURL</button>
+            </div>
+          </div>
+          
+          <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-6">
+              <form id="endpoint-form" class="space-y-4">
+                ${ep.auth === 'jwt' ? `
+                  <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase">JWT Authorization</label>
+                    <textarea id="jwt-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" rows="2" placeholder="Paste Bearer token here...">${localStorage.getItem('last_jwt') || ''}</textarea>
+                  </div>
+                ` : ''}
+
+                ${pathParams.map(p => `
+                  <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase">Path Parameter: ${p}</label>
+                    <input type="text" id="param-${p}" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" required>
+                  </div>
+                `).join('')}
+
+                ${ep.method !== 'GET' && ep.method !== 'DELETE' ? `
+                  <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase">JSON Request Body</label>
+                    <textarea id="json-body" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none custom-scrollbar" rows="10">${JSON.stringify(ep.bodyExample || {}, null, 2)}</textarea>
+                  </div>
+                ` : ''}
+
+                <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-all transform active:scale-95 shadow-lg shadow-blue-900/20">
+                  Execute Request
+                </button>
+              </form>
+            </div>
+
+            <div class="space-y-4">
+              <label class="block text-xs font-bold text-slate-500 uppercase">Response</label>
+              <div id="response-container" class="bg-slate-950 rounded-lg border border-slate-800 p-4 min-h-[400px] font-mono text-sm overflow-hidden custom-scrollbar">
+                <div class="flex items-center justify-center h-full text-slate-700 italic">
+                  Run request to see response...
+                </div>
               </div>
-            ` : ''}
-            ${pathParams.map((p) => `
-              <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Path param: ${p}</label>
-                <input type="text" id="param-${p}" class="w-full border rounded px-3 py-2" required>
-              </div>
-            `).join('')}
-            ${ep.method !== 'GET' && ep.method !== 'DELETE' ? `
-              <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">JSON Body</label>
-                <textarea id="json-body" class="w-full border rounded px-3 py-2 font-mono text-sm" rows="8">${JSON.stringify(ep.bodyExample || {}, null, 2)}</textarea>
-              </div>
-            ` : ''}
-            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Send Request</button>
-          </form>
-          <div class="mt-6">
-            <h3 class="font-semibold mb-2">Response:</h3>
-            <pre id="response" class="bg-gray-100 p-4 rounded overflow-auto max-h-96"></pre>
+            </div>
           </div>
         </div>
       `;
 
       const form = document.getElementById('endpoint-form');
-      if (!form) return;
-
-      form.onsubmit = (event) => {
-        event.preventDefault();
-
-        const params = {};
-        pathParams.forEach((p) => {
-          params[p] = document.getElementById(`param-${p}`)?.value;
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        let resolvedPath = ep.path;
+        pathParams.forEach(p => {
+          const val = document.getElementById(`param-${p}`)?.value;
+          resolvedPath = resolvedPath.replace(`:${p}`, encodeURIComponent(val));
         });
-
-        const resolvedPath = applyPathParams(ep.path, params);
 
         let body = null;
         if (ep.method !== 'GET' && ep.method !== 'DELETE') {
-          const rawBody = document.getElementById('json-body')?.value;
           try {
-            body = rawBody ? JSON.parse(rawBody) : {};
-          } catch (e) {
-            showToast(`Invalid JSON body: ${e.message}`, 'error');
+            body = JSON.parse(document.getElementById('json-body').value);
+          } catch(err) {
+            showToast('Invalid JSON in request body', 'error');
             return;
           }
         }
 
-        makeRequest(resolvedPath, ep.method, body, requiresJWT);
+        makeRequest(resolvedPath, ep.method, body, ep.auth);
       };
     }
 
-    const searchEl = document.getElementById('sidebar-search');
-    if (searchEl) {
-      searchEl.addEventListener('input', () => renderSidebar());
+    async function copyToClipboard(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      await navigator.clipboard.writeText(text);
+      showToast('Copied to clipboard');
     }
 
+    document.getElementById('sidebar-search').oninput = renderSidebar;
     renderSidebar();
   </script>
-<script>
-  window.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-      e.preventDefault();
-      window.parent.postMessage({ type: "keydown", ctrlK: true }, "*");
-    }
-  });
-</script>
 </body>
 </html>
