@@ -41,13 +41,14 @@ class WorkflowService {
     const entrypoint = incomingContext.entrypoint || incomingContext.payload || workflow.testDataset || {};
 
     // 2. Rebuild the context from scratch to ensure a clean state
+    // If incomingContext has lastNode, we use it, otherwise we default to entrypoint
     this.context = {
       ...incomingContext,
       entrypoint: entrypoint,
       payload: entrypoint,
       nodes: incomingContext.nodes || {},
       lastNode: incomingContext.lastNode || {
-        method: entrypoint.method,
+        method: entrypoint.method || 'POST',
         body: entrypoint.body || {},
         query: entrypoint.query || {},
         headers: entrypoint.headers || {}

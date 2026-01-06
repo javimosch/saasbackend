@@ -192,15 +192,18 @@
             <div class="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
               <div class="flex justify-between items-center mb-2">
                 <span class="text-[10px] font-bold text-amber-600 uppercase">Active Test Dataset</span>
-                <button @click="testConfig.method = workflow.testDataset.method; testConfig.body = JSON.stringify(workflow.testDataset.body, null, 2); showTestPanel = true;" 
+                <button @click="testConfig.method = workflow.testDataset.method; testConfig.body = JSON.stringify(workflow.testDataset.body || {}, null, 2); testConfig.query = JSON.stringify(workflow.testDataset.query || {}, null, 2); testConfig.headers = JSON.stringify(workflow.testDataset.headers || {}, null, 2); showTestPanel = true;" 
                         class="text-[10px] font-bold text-amber-700 hover:underline uppercase">Edit Dataset</button>
               </div>
-              <div class="grid grid-cols-2 gap-4 text-[10px] font-mono">
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-[10px] font-mono">
                 <div>
-                  <span class="text-amber-500">Method:</span> <span x-text="workflow.testDataset.method"></span>
+                  <span class="text-amber-500 font-bold">Method:</span> <span x-text="workflow.testDataset.method"></span>
                 </div>
                 <div class="truncate">
-                  <span class="text-amber-500">Body:</span> <span x-text="JSON.stringify(workflow.testDataset.body)"></span>
+                  <span class="text-amber-500 font-bold">Query:</span> <span x-text="JSON.stringify(workflow.testDataset.query)"></span>
+                </div>
+                <div class="truncate">
+                  <span class="text-amber-500 font-bold">Body:</span> <span x-text="JSON.stringify(workflow.testDataset.body)"></span>
                 </div>
               </div>
             </div>
@@ -312,9 +315,12 @@
               <div class="w-full bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative group">
                 <!-- Node Header -->
                 <div class="flex items-center justify-between mb-4">
-                  <div class="flex items-center gap-3">
-                    <div :class="getNodeColor(node.type)" class="p-2 rounded-lg text-white">
+                    <div class="flex items-center gap-3">
+                    <div :class="getNodeColor(node.type)" class="p-2 rounded-lg text-white relative">
                       <i :class="getNodeIcon(node.type)" class="text-lg"></i>
+                      <template x-if="node.testResult">
+                        <div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" title="Node has test result"></div>
+                      </template>
                     </div>
                     <div>
                       <h3 class="font-bold text-gray-900" x-text="node.type.toUpperCase()"></h3>
@@ -544,7 +550,7 @@
             this.workflow.testDataset = { method: 'POST', body: { message: 'Hello' }, query: {}, headers: {} };
           }
           if (!this.workflow.entrypoint.auth) {
-            this.workflow.entrypoint.auth = { type: 'none', headerName: '', headerValue: '' };
+            this.workflow.entrypoint.auth = { type: 'none', headerName: '', headerValue: ' ' };
           }
           if (!this.workflow.entrypoint.allowedMethods) {
             this.workflow.entrypoint.allowedMethods = ['POST', 'GET'];
@@ -552,7 +558,8 @@
           // Prep EXIT nodes for textarea and validate names
           this.workflow.nodes.forEach(n => {
             if (n.type === 'exit') n.bodyStr = JSON.stringify(n.body, null, 2);
-            n.testOutput = null;
+            // Initialize testOutput from persisted testResult if available
+            n.testOutput = n.testResult || null;
             if (!n.name) n.name = n.outputVar || '';
           });
           this.validateNodeNames();
@@ -697,22 +704,37 @@
         async testIsolatedNode(node) {
           if (!this.workflow._id) return alert('Save workflow first');
           
-          // Ensure we have entrypoint in context
-          const currentContext = this.testResult.context || { 
-            entrypoint: this.workflow.testDataset || { body: {}, query: {}, headers: {}, method: 'POST' },
-            payload: this.workflow.testDataset || { body: {}, query: {}, headers: {}, method: 'POST' },
-            nodes: {}, 
-            lastNode: { 
-              method: (this.workflow.testDataset && this.workflow.testDataset.method) ? this.workflow.testDataset.method : 'POST',
-              body: (this.workflow.testDataset && this.workflow.testDataset.body) ? this.workflow.testDataset.body : {},
-              query: (this.workflow.testDataset && this.workflow.testDataset.query) ? this.workflow.testDataset.query : {},
-              headers: (this.workflow.testDataset && this.workflow.testDataset.headers) ? this.workflow.testDataset.headers : {}
+          // Rebuild context from previous nodes' testResults if they exist
+          const nodesContext = {};
+          let lastResult = null;
+          
+          this.workflow.nodes.forEach((n, idx) => {
+            const nodeIndex = this.workflow.nodes.indexOf(node);
+            if (idx < nodeIndex && n.testResult) {
+              const standardizedResult = (typeof n.testResult !== 'object' || n.testResult === null) 
+                ? { result: n.testResult } 
+                : n.testResult;
+              
+              if (n.name) nodesContext[n.name] = standardizedResult;
+              lastResult = standardizedResult;
             }
+          });
+
+          const entrypoint = this.workflow.testDataset || { body: {}, query: {}, headers: {}, method: 'POST' };
+          
+          const context = { 
+            entrypoint: entrypoint,
+            payload: entrypoint,
+            nodes: {}, 
+            lastNode: lastResult || { 
+              method: entrypoint.method || 'POST',
+              body: entrypoint.body || {},
+              query: entrypoint.query || {},
+              headers: entrypoint.headers || {}
+            },
+            ...nodesContext
           };
 
-          // CRITICAL: Clone context to avoid side effects during UI state updates
-          const context = JSON.parse(JSON.stringify(currentContext));
-          
           try {
             const res = await fetch(`/saas/api/workflows/${this.workflow._id}/nodes/${node.id}/test`, {
               method: 'POST',
@@ -721,12 +743,11 @@
             });
             const data = await res.json();
             
-            // Update node output
+            // Update node output and persist in local state
             node.testOutput = data.result;
+            node.testResult = data.result;
             
             // Persist the context in memory for next node testing
-            // We ALWAYS update lastNode to be the result of the current node
-            // unless it's an exit node (as requested before to avoid recursion)
             if (node.type !== 'exit') {
               this.testResult.context = data.context;
             }

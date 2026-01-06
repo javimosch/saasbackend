@@ -71,8 +71,20 @@ router.post('/:id/test', async (req, res) => {
 router.post('/:id/nodes/:nodeId/test', async (req, res) => {
   try {
     const { WorkflowService } = require('../services/workflow.service');
+    const workflow = await Workflow.findById(req.params.id);
+    if (!workflow) return res.status(404).json({ error: 'Workflow not found' });
+
     const service = new WorkflowService(req.params.id);
     const result = await service.runNodeById(req.params.id, req.params.nodeId, req.body.context || {});
+    
+    // Persist result in the node's testResult field
+    const nodeIndex = workflow.nodes.findIndex(n => n.id === req.params.nodeId);
+    if (nodeIndex !== -1) {
+      workflow.nodes[nodeIndex].testResult = result;
+      workflow.markModified('nodes');
+      await workflow.save();
+    }
+
     res.json({ result, context: service.context });
   } catch (err) {
     res.status(500).json({ error: err.message });
