@@ -406,12 +406,23 @@ async function callAdhoc(
   const { providers: rawProviders } = await loadConfig();
   const providers = normalizeProviderConfig(rawProviders);
 
-  const provider = providers[String(providerKey || "").trim()];
+  const key = String(providerKey || "").trim();
+  let provider = providers[key];
+  
+  // Apply runtime overrides for provider if possible
+  if (runtimeOptions.apiKey || runtimeOptions.baseUrl) {
+    provider = {
+      ...(provider || { key: key || 'custom', enabled: true, baseUrl: 'https://openrouter.ai/api/v1' }),
+      ...(runtimeOptions.apiKey ? { apiKey: runtimeOptions.apiKey } : {}),
+      ...(runtimeOptions.baseUrl ? { baseUrl: runtimeOptions.baseUrl } : {}),
+    };
+  }
+
   if (!provider || provider.enabled === false || !provider.apiKey) {
     throw new Error("Provider not found, disabled, or missing apiKey");
   }
 
-  const resolvedModel = String(model || provider.defaultModel || "").trim();
+  const resolvedModel = String(model || runtimeOptions.model || provider.defaultModel || "google/gemini-2.5-flash-lite").trim();
   if (!resolvedModel) {
     throw new Error("Model is not configured");
   }
@@ -554,12 +565,23 @@ async function callAdhoc(
   const { providers: rawProviders } = await loadConfig();
   const providers = normalizeProviderConfig(rawProviders);
 
-  const provider = providers[String(providerKey || "").trim()];
+  const key = String(providerKey || "").trim();
+  let provider = providers[key];
+  
+  // Apply runtime overrides for provider if possible
+  if (runtimeOptions.apiKey || runtimeOptions.baseUrl) {
+    provider = {
+      ...(provider || { key: key || 'custom', enabled: true, baseUrl: 'https://openrouter.ai/api/v1' }),
+      ...(runtimeOptions.apiKey ? { apiKey: runtimeOptions.apiKey } : {}),
+      ...(runtimeOptions.baseUrl ? { baseUrl: runtimeOptions.baseUrl } : {}),
+    };
+  }
+
   if (!provider || provider.enabled === false || !provider.apiKey) {
     throw new Error("Provider not found, disabled, or missing apiKey");
   }
 
-  const resolvedModel = String(model || provider.defaultModel || "").trim();
+  const resolvedModel = String(model || runtimeOptions.model || provider.defaultModel || "google/gemini-2.5-flash-lite").trim();
   if (!resolvedModel) {
     throw new Error("Model is not configured");
   }
