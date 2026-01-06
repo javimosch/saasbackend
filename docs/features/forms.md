@@ -1,64 +1,57 @@
-# Forms
+# Forms & Leads System
 
-## What it is
+## Overview
+The Forms feature provides a robust backend for capturing, managing, and integrating leads from any platform (Webflow, Framer, static HTML, or custom JS apps). It supports multi-tenancy, custom form definitions, and various integration patterns.
 
-The Forms feature allows you to collect and track form submissions from your frontend.
+## Key Features
+- **Custom Form Definitions**: Create and manage form schemas via Admin UI.
+- **Lead Capture**: Store submissions with automatic IP, User-Agent, and Referer tracking.
+- **Multi-tenancy**: Map forms to specific Organizations via `organizationId`.
+- **Webhooks**: 
+  - **Generic**: Global `form.submitted` events emitted via `WebhookService`.
+  - **Legacy**: Per-form dedicated Webhook URLs.
+- **Email Notifications**: Instant alerts when a new lead is captured.
+- **Admin Dashboard**: View, filter, and delete submissions.
 
-It is designed for:
-- Contact forms
-- Support requests
-- Lead capture
-- Any custom data collection
+## Integration Patterns
 
-Submissions are stored in MongoDB and can be searched and managed via the Admin UI.
+### 1. Zero-JS Refresh-less (IFrame)
+Best for static sites (Webflow/Framer) where you want a submission without a page refresh but don't want to write JavaScript.
+```html
+<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="if(this.contentWindow.name=='submitted'){alert('Form Submitted!');}"></iframe>
 
-## Base URL / mount prefix
-When mounted at `/saas`, all routes are prefixed:
-- `${BASE_URL}/api/forms/submit`
-- `${BASE_URL}/api/admin/forms`
-
-## API
-
-### Public endpoints
-
-#### Submit a form
-
-```
-POST ${BASE_URL}/api/forms/submit
+<form action="/api/forms/submit/YOUR_FORM_ID" method="POST" target="hidden_iframe">
+  <!-- fields -->
+</form>
 ```
 
-Body:
-
-```json
-{
-  "formKey": "contact",
-  "data": {
-    "name": "John Doe",
-    "email": "john@example.com",
-    "message": "Hello from the frontend!"
-  },
-  "metadata": {
-    "source": "homepage"
-  }
-}
+### 2. Standard AJAX (Fetch)
+Best for modern React/Vue/Svelte apps.
+```javascript
+fetch('/api/forms/submit/YOUR_FORM_ID', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'user@example.com', message: 'Hello' })
+});
 ```
 
-Example:
+### 3. Styled HTML (Tailwind CSS)
+A production-ready snippet provided in the Admin UI with built-in Tailwind classes.
 
-```bash
-curl -X POST "${BASE_URL}/api/forms/submit" \
-  -H "Content-Type: application/json" \
-  -d '{"formKey":"contact","data":{"email":"user@example.com","message":"Hi!"}}'
-```
+## API Reference
 
-### Admin endpoints (Basic Auth)
+### Public Endpoints
+- `POST /api/forms/submit/:formId`
+  - Accepts JSON or URL-encoded form data.
+  - Returns `201 Created` or `302 Redirect` if `successUrl` is configured.
 
-- `GET ${BASE_URL}/api/admin/forms` - List submissions
-- `GET ${BASE_URL}/api/admin/forms?formKey=contact` - Filter by form type
+### Admin Endpoints (Basic Auth)
+- `GET /api/admin/forms` - List all submissions (paginated).
+- `DELETE /api/admin/forms/:id` - Permanently delete a lead.
+- `GET /api/admin/forms/definitions` - List form configurations.
+- `POST /api/admin/forms/definitions` - Create/Update form configuration.
+- `DELETE /api/admin/forms/definitions/:id` - Delete form configuration.
 
-## Admin UI
-- `/admin/forms` - Form submissions management
-
-## Common errors / troubleshooting
-- **400 Bad Request**: Missing `formKey` or invalid fields.
-- **400 Bad Request**: Validation failed (e.g. invalid email format for known form types).
+## Storage
+- **Definitions**: Stored in `JsonConfig` model with slug `form-definitions`.
+- **Submissions**: Stored in `FormSubmission` model.
