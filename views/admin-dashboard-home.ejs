@@ -189,10 +189,15 @@
       // Update Content
       document.getElementById('cont-assets').innerText = categories.content.assets;
       document.getElementById('cont-ejs').innerText = categories.content.virtualEjs;
-      document.getElementById('cont-json').innerText = categories.content.jsonConfigs;
-      document.getElementById('saas-plans').innerText = categories.saas.plans;
-
-      // Update Activity
+          <div class="stat-card">
+            <span class="text-sm text-gray-500">Active Workflows</span>
+            <div class="flex items-end justify-between mt-2">
+              <h3 id="saas-workflows" class="text-2xl font-bold">-</h3>
+              <a href="#" onclick="parent.window.app.openTab({id:'workflows', label:'Workflows', path:'/admin/workflows/new', icon:'ti-robot'})" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition-colors uppercase font-bold">New</a>
+            </div>
+          </div>
+        </div>
+      </div>
       const activityBody = document.getElementById('activity-list');
       activityBody.innerHTML = recentActivity.map(event => `
         <tr class="text-xs text-gray-700">

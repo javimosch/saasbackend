@@ -209,6 +209,8 @@ function createMiddleware(options = {}) {
   router.use("/api/admin/audit", basicAuth, require("./routes/adminAudit.routes"));
   router.use("/api/admin/llm", require("./routes/adminLlm.routes"));
   router.use("/api/admin/ejs-virtual", require("./routes/adminEjsVirtual.routes"));
+  router.use("/api/workflows", basicAuth, require("./routes/workflows.routes"));
+  router.use("/w", require("./routes/workflowWebhook.routes"));
   router.use("/api/webhooks", require("./routes/webhook.routes"));
   router.use("/api/settings", require("./routes/globalSettings.routes"));
   router.use("/api/feature-flags", require("./routes/featureFlags.routes"));
@@ -322,6 +324,23 @@ function createMiddleware(options = {}) {
             filename: templatePath,
           },
         );
+        res.send(html);
+      } catch (renderErr) {
+        console.error("Error rendering template:", renderErr);
+        res.status(500).send("Error rendering page");
+      }
+    });
+  });
+
+  router.get(`${adminPath}/workflows/:id`, basicAuth, (req, res) => {
+    const templatePath = path.join(__dirname, "..", "views", "admin-workflows.ejs");
+    fs.readFile(templatePath, "utf8", (err, template) => {
+      if (err) {
+        console.error("Error reading template:", err);
+        return res.status(500).send("Error loading page");
+      }
+      try {
+        const html = ejs.render(template, { baseUrl: req.baseUrl, adminPath }, { filename: templatePath });
         res.send(html);
       } catch (renderErr) {
         console.error("Error rendering template:", renderErr);

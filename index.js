@@ -54,6 +54,7 @@ const saasbackend = {
     ejsVirtual: require("./src/services/ejsVirtual.service"),
     forms: require("./src/services/forms.service"),
     webhooks: require("./src/services/webhook.service"),
+    workflow: require("./src/services/workflow.service"),
   },
   models: {
     ActionEvent: require("./src/models/ActionEvent"),
@@ -79,6 +80,8 @@ const saasbackend = {
     VirtualEjsFileVersion: require("./src/models/VirtualEjsFileVersion"),
     VirtualEjsGroupChange: require("./src/models/VirtualEjsGroupChange"),
     Webhook: require("./src/models/Webhook"),
+    Workflow: require("./src/models/Workflow"),
+    WorkflowExecution: require("./src/models/WorkflowExecution"),
   },
   helpers: {
     auth: require("./src/middleware/auth"),

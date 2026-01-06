@@ -9,6 +9,7 @@ const EmailLog = require('../models/EmailLog');
 const VirtualEjsFile = require('../models/VirtualEjsFile');
 const JsonConfig = require('../models/JsonConfig');
 const StripeCatalogItem = require('../models/StripeCatalogItem');
+const Workflow = require('../models/Workflow');
 
 exports.getOverviewStats = async (req, res) => {
   try {
@@ -35,7 +36,8 @@ exports.getOverviewStats = async (req, res) => {
       // SaaS & Billing
       totalForms,
       totalWaiting,
-      totalPlans
+      totalPlans,
+      totalWorkflows
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ createdAt: { $gte: startOfToday } }),
@@ -50,7 +52,8 @@ exports.getOverviewStats = async (req, res) => {
       JsonConfig.countDocuments(),
       FormSubmission.countDocuments(),
       WaitingList.countDocuments(),
-      StripeCatalogItem.countDocuments({ active: true })
+      StripeCatalogItem.countDocuments({ active: true }),
+      Workflow.countDocuments()
     ]);
 
     // 2. Recent Activity (Last 10 Audit Events)
@@ -104,7 +107,8 @@ exports.getOverviewStats = async (req, res) => {
         saas: {
           forms: totalForms,
           waiting: totalWaiting,
-          plans: totalPlans
+          plans: totalPlans,
+          workflows: totalWorkflows
         }
       },
       recentActivity,
