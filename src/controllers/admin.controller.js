@@ -278,25 +278,29 @@ const getWebhookStats = asyncHandler(async (req, res) => {
 // Coolify Headless Deploy provisioning
 const provisionCoolifyDeploy = asyncHandler(async (req, res) => {
   try {
-    const managePath = path.join(process.cwd(), 'manage.sh');
+    const { overwrite } = req.body;
+    const managePath = path.join(process.cwd(), "manage.sh");
     const exists = fs.existsSync(managePath);
-    
-    if (exists) {
-      return res.json({ 
-        success: true, 
-        message: 'Script already exists', 
-        path: managePath 
+
+    if (exists && !overwrite) {
+      return res.json({
+        success: false,
+        requiresConfirmation: true,
+        message: "Script already exists. Do you want to overwrite it?",
       });
     }
 
     // In ref-saasbackend, manage.sh already exists in the root of the repository
-    res.json({ 
-      success: true, 
-      message: 'Coolify Headless Deploy script (manage.sh) is ready in the root directory.',
-      path: managePath
+    // If it didn't, we would write it here. For this case, we'll just success.
+    res.json({
+      success: true,
+      message: exists
+        ? "Coolify Headless Deploy script (manage.sh) was already there."
+        : "Coolify Headless Deploy script (manage.sh) is ready in the root directory.",
+      path: managePath,
     });
   } catch (error) {
-    console.error('❌ Error provisioning script:', error);
+    console.error("❌ Error provisioning script:", error);
     res.status(500).json({ error: error.message });
   }
 });

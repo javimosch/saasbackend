@@ -143,13 +143,29 @@ REMOTE_DOMAIN_CONFIG_FILENAME=superlandings.yml`;
                     setTimeout(() => { toast.value = null; }, 3000);
                 };
 
-                const provisionScript = async () => {
+                const provisionScript = async (overwrite = false) => {
+                    if (overwrite) {
+                        if (!confirm('Are you sure you want to overwrite the existing manage.sh?')) {
+                            return;
+                        }
+                    }
+
                     loading.value.provisioning = true;
                     try {
                         const res = await fetch(baseUrl + '/api/admin/coolify-headless-deploy/provision', {
-                            method: 'POST'
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ overwrite })
                         });
                         const data = await res.json();
+                        
+                        if (data.requiresConfirmation) {
+                            provisionScript(true);
+                            return;
+                        }
+
                         if (data.success) {
                             showToast(data.message);
                         } else {
