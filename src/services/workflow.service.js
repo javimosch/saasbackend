@@ -1,7 +1,7 @@
 const Workflow = require('../models/Workflow');
 const WorkflowExecution = require('../models/WorkflowExecution');
 const llmService = require('./llm.service');
-const vm = require('vm');
+const { NodeVM } = require('vm2');
 
 /**
  * Workflow Service
@@ -172,14 +172,15 @@ class WorkflowService {
   }
 
   async handleIf(node) {
-    const script = new vm.Script(node.condition);
-    const context = vm.createContext({ 
-      ...this.context,
-      context: this.context, // for backward compatibility
-      JSON,
-      console
+    const vm = new NodeVM({
+      sandbox: { 
+        ...this.context,
+        context: this.context // for backward compatibility
+      },
+      timeout: 1000
     });
-    const match = script.runInContext(context);
+
+    const match = vm.run(`module.exports = (${node.condition})`);
 
     if (match) {
       return await this.executeNodes(node.then || []);
@@ -204,19 +205,17 @@ class WorkflowService {
 
   interpolate(str) {
     if (!str || typeof str !== 'string') return str;
-    return str.replace(/\{\{(.*?)\}\}/g, (match, jsCode) => {
+    return str.replace(/\{\{(.*?)\}\}/gs, (match, jsCode) => {
       try {
-        const script = new vm.Script(jsCode.trim());
-        const context = vm.createContext({ 
-          ...this.context,
-          // Useful helpers
-          JSON,
-          console 
+        const vm = new NodeVM({
+          sandbox: this.context,
+          timeout: 1000
         });
-        const val = script.runInContext(context);
         
-        if (val === undefined || val === null) return match;
-        return typeof val === 'object' ? JSON.stringify(val) : val;
+        const val = vm.run(`module.exports = (${jsCode.trim()})`);
+        
+        if (val === undefined || val === null) return '';
+        return typeof val === 'object' ? JSON.stringify(val) : String(val);
       } catch (err) {
         // Fallback to path resolution if JS eval fails
         const parts = jsCode.trim().split('.');
@@ -226,7 +225,7 @@ class WorkflowService {
           val = val[part];
         }
         if (val === undefined || val === null) return match;
-        return typeof val === 'object' ? JSON.stringify(val) : val;
+        return typeof val === 'object' ? JSON.stringify(val) : String(val);
       }
     });
   }
