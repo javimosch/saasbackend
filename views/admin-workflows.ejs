@@ -14,6 +14,34 @@
 </head>
 <body class="bg-gray-50 min-h-screen pb-20">
   <div x-data="workflowEditor()" class="max-w-4xl mx-auto p-6" x-cloak>
+    <!-- Toasts Notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[9999] space-y-2 pointer-events-none" style="min-width: 200px;">
+      <template x-for="toast in toasts" :key="toast.id">
+        <div x-show="toast.show" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-2"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 translate-y-2"
+             :class="{
+               'bg-green-600': toast.type === 'success',
+               'bg-red-600': toast.type === 'error',
+               'bg-blue-600': toast.type === 'info'
+             }"
+             class="px-4 py-3 rounded-xl text-white text-sm font-bold shadow-2xl flex items-center gap-3 pointer-events-auto border border-white/10">
+          <div class="bg-white/20 p-1 rounded-lg">
+            <i :class="{
+              'ti ti-check': toast.type === 'success',
+              'ti ti-x': toast.type === 'error',
+              'ti ti-info-circle': toast.type === 'info'
+            }" class="text-lg"></i>
+          </div>
+          <span x-text="toast.message"></span>
+        </div>
+      </template>
+    </div>
+
     <!-- List View -->
     <template x-if="view === 'list'">
       <div>
@@ -504,6 +532,25 @@
         showRuns: false,
         runs: [],
         inspectedRun: null,
+        toasts: [],
+        
+        showToast(message, type = 'success') {
+          console.log('Showing toast:', message, type);
+          const id = Date.now();
+          this.toasts.push({ id, message, type, show: true });
+          console.log('Current toasts:', JSON.stringify(this.toasts));
+          setTimeout(() => {
+            const toast = this.toasts.find(t => t.id === id);
+            if (toast) {
+              toast.show = false;
+              console.log('Hiding toast:', id);
+            }
+            setTimeout(() => {
+              this.toasts = this.toasts.filter(t => t.id !== id);
+              console.log('Removed toast:', id);
+            }, 500);
+          }, 3000);
+        },
         
         async init() {
           await this.loadWorkflows();
@@ -659,17 +706,20 @@
           
           if (res.ok) {
             const saved = await res.json();
-            if (!silent) alert('Workflow saved!');
+            if (!silent) this.showToast('Workflow saved!');
             await this.loadWorkflows();
             this.editWorkflow(saved);
             if (!silent) history.pushState({}, '', `/saas/admin/workflows/${saved._id}`);
           } else {
             const err = await res.json();
-            if (!silent) alert('Error saving: ' + (err.error || err.message));
+            if (!silent) this.showToast('Error saving: ' + (err.error || err.message), 'error');
           }
         },
         async runFullTest(entrypointOnly = false) {
-          if (!this.workflow._id) return alert('Save workflow first');
+          if (!this.workflow._id) {
+            this.showToast('Save workflow first', 'error');
+            return;
+          }
           
           const payload = {
             method: this.testConfig.method,
@@ -682,7 +732,7 @@
             this.workflow.testDataset = payload;
             await this.saveWorkflow(true); // Silent save
             this.testResult.context = { payload, nodes: {}, lastNode: null };
-            alert('Test dataset updated. You can now test nodes in isolation.');
+            this.showToast('Test dataset updated. You can now test nodes in isolation.');
             return;
           }
 
@@ -695,14 +745,18 @@
             });
             this.testResult = await res.json();
             if (this.showRuns) this.loadRuns();
+            this.showToast('Workflow executed successfully');
           } catch (e) {
-            alert('Invalid JSON in test config or execution failed');
+            this.showToast('Invalid JSON in test config or execution failed', 'error');
           } finally {
             this.testing = false;
           }
         },
         async testIsolatedNode(node) {
-          if (!this.workflow._id) return alert('Save workflow first');
+          if (!this.workflow._id) {
+            this.showToast('Save workflow first', 'error');
+            return;
+          }
           
           // Rebuild context from previous nodes' testResults if they exist
           const nodesContext = {};
@@ -739,7 +793,7 @@
             const res = await fetch(`/saas/api/workflows/${this.workflow._id}/nodes/${node.id}/test`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ context })
+              body: JSON.stringify({ context, node }) // Send node data for dirty testing
             });
             const data = await res.json();
             
@@ -747,12 +801,14 @@
             node.testOutput = data.result;
             node.testResult = data.result;
             
+            this.showToast('Node tested successfully');
+            
             // Persist the context in memory for next node testing
             if (node.type !== 'exit') {
               this.testResult.context = data.context;
             }
           } catch (e) {
-            alert('Node test failed: ' + e.message);
+            this.showToast('Node test failed: ' + e.message, 'error');
           }
         },
         async loadRuns() {
