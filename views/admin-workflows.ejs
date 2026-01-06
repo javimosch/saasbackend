@@ -6,16 +6,16 @@
   <title>Workflow Editor - SaaSBackend</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     [x-cloak] { display: none !important; }
     .node-connector { width: 2px; @apply bg-gray-200 h-8 mx-auto; }
+    .canvas-no-select { user-select: none; -webkit-user-select: none; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen pb-20">
-  <div x-data="workflowEditor()" class="max-w-4xl mx-auto p-6" x-cloak>
+  <div x-data="workflowEditor()" class="w-full px-6 py-6" x-cloak>
     <!-- Toasts Notifications -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-[9999] space-y-2 pointer-events-none" style="min-width: 200px;">
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[30000] space-y-2 pointer-events-none" style="min-width: 200px;">
       <template x-for="toast in toasts" :key="toast.id">
         <div x-show="toast.show" 
              x-transition:enter="transition ease-out duration-300"
@@ -24,806 +24,287 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0"
              x-transition:leave-end="opacity-0 translate-y-2"
-             :class="{
-               'bg-green-600': toast.type === 'success',
-               'bg-red-600': toast.type === 'error',
-               'bg-blue-600': toast.type === 'info'
-             }"
+             :class="{'bg-green-600': toast.type === 'success', 'bg-red-600': toast.type === 'error', 'bg-blue-600': toast.type === 'info'}"
              class="px-4 py-3 rounded-xl text-white text-sm font-bold shadow-2xl flex items-center gap-3 pointer-events-auto border border-white/10">
           <div class="bg-white/20 p-1 rounded-lg">
-            <i :class="{
-              'ti ti-check': toast.type === 'success',
-              'ti ti-x': toast.type === 'error',
-              'ti ti-info-circle': toast.type === 'info'
-            }" class="text-lg"></i>
+            <i :class="{'ti ti-check': toast.type === 'success', 'ti ti-x': toast.type === 'error', 'ti ti-info-circle': toast.type === 'info'}" class="text-lg"></i>
           </div>
           <span x-text="toast.message"></span>
         </div>
       </template>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div x-show="confirmModal.show" class="fixed inset-0 z-[20000] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm" x-cloak>
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200" @click.away="confirmModal.show = false">
+        <div class="flex items-center gap-4 text-amber-600 mb-4">
+          <div class="p-3 bg-amber-50 rounded-full"><i class="ti ti-alert-triangle text-2xl"></i></div>
+          <h3 class="text-xl font-bold text-slate-800" x-text="confirmModal.title"></h3>
+        </div>
+        <p class="text-slate-600 text-sm mb-6" x-text="confirmModal.message"></p>
+        <div class="flex gap-3 justify-end">
+          <button @click="confirmModal.show = false" class="px-4 py-2 text-sm font-bold text-slate-400 hover:text-slate-600 uppercase">Cancel</button>
+          <button @click="confirmModal.onConfirm(); confirmModal.show = false;" class="px-6 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 shadow-lg transition-all uppercase">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Test Panel Overlay -->
+    <div x-show="showTestPanel" class="fixed inset-0 z-[25000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+      <div class="bg-slate-900 rounded-2xl p-6 w-full max-w-4xl text-white shadow-2xl border border-slate-700" @click.away="showTestPanel = false">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-sm font-bold flex items-center gap-2"><i class="ti ti-flask text-yellow-400"></i> Advanced Test Runner</h3>
+          <button @click="showTestPanel = false" class="text-gray-400 hover:text-white p-2 hover:bg-slate-800 rounded-lg transition-colors"><i class="ti ti-x text-xl"></i></button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="md:col-span-2 space-y-4">
+            <div class="flex gap-2">
+              <select x-model="testConfig.method" class="bg-slate-800 border border-slate-700 rounded-lg text-xs p-2.5 focus:ring-2 ring-indigo-500"><option>GET</option><option>POST</option></select>
+              <input type="text" :value="getWebhookUrl()" readonly class="bg-slate-800 border border-slate-700 rounded-lg text-xs p-2.5 flex-1 text-gray-400 font-mono">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-gray-500 uppercase">Query Params (JSON)</label>
+                <textarea x-model="testConfig.query" class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs p-3 font-mono h-32 focus:ring-2 ring-indigo-500"></textarea>
+              </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-gray-500 uppercase">Body Payload (JSON)</label>
+                <textarea x-model="testConfig.body" class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs p-3 font-mono h-32 focus:ring-2 ring-indigo-500"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700 space-y-4">
+            <div class="flex items-center justify-between"><span class="text-[10px] font-bold text-gray-500 uppercase">Last Execution</span><span :class="testResult.status === 'completed' ? 'text-green-400' : 'text-red-400'" class="text-[10px] font-bold uppercase" x-text="testResult.status || 'None'"></span></div>
+            <div class="h-48 overflow-y-auto text-[10px] font-mono space-y-1 text-gray-400 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+              <template x-for="log in testResult.log"><div class="border-l-2 border-slate-700 pl-2 py-1"><span :class="log.status === 'success' ? 'text-green-500' : 'text-red-500'" x-text="log.type.toUpperCase()"></span>: <span x-text="log.message || (log.duration + 'ms')"></span></div></template>
+            </div>
+            <div class="space-y-2">
+              <button @click="runFullTest()" :disabled="testing" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold transition-all disabled:opacity-50"><span x-show="!testing">RUN FULL WORKFLOW</span><span x-show="testing">EXECUTING...</span></button>
+              <button @click="runFullTest(true)" :disabled="testing" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-bold transition-all disabled:opacity-50"><span>SET TEST DATASET ONLY</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- List View -->
     <template x-if="view === 'list'">
       <div>
         <div class="flex justify-between items-center mb-8">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Workflows</h1>
-            <p class="text-sm text-gray-500">Automate your backend logic with stacked nodes.</p>
-          </div>
-          <button @click="createNew()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
-            <i class="ti ti-plus"></i> New Workflow
-          </button>
+          <div><h1 class="text-2xl font-bold text-gray-900">Workflows</h1><p class="text-sm text-gray-500">Automate backend logic.</p></div>
+          <button @click="createNew()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2"><i class="ti ti-plus"></i> New Workflow</button>
         </div>
-
         <div class="grid grid-cols-1 gap-4">
           <template x-for="wf in workflows" :key="wf._id">
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                  <i class="ti ti-robot text-xl"></i>
-                </div>
-                <div>
-                  <h3 class="font-bold text-gray-900" x-text="wf.name"></h3>
-                  <div class="flex items-center gap-2 text-xs text-gray-400">
-                    <span x-text="wf.nodes?.length || 0"></span> nodes
-                    <span>•</span>
-                    <span :class="wf.status === 'active' ? 'text-green-600' : 'text-gray-400'" x-text="wf.status.toUpperCase()"></span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <button @click="editWorkflow(wf)" class="px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">EDIT</button>
-                <button @click="deleteWorkflow(wf._id)" class="p-2 text-gray-400 hover:text-red-500"><i class="ti ti-trash"></i></button>
-              </div>
+              <div class="flex items-center gap-4"><div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg"><i class="ti ti-robot text-xl"></i></div><div><h3 class="font-bold text-gray-900" x-text="wf.name"></h3><div class="flex items-center gap-2 text-xs text-gray-400"><span x-text="wf.nodes?.length || 0"></span> nodes <span>•</span><span :class="wf.status === 'active' ? 'text-green-600' : 'text-gray-400'" x-text="wf.status.toUpperCase()"></span></div></div></div>
+              <div class="flex items-center gap-2"><button @click="editWorkflow(wf)" class="px-3 py-1.5 bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">EDIT</button><button @click="deleteWorkflow(wf._id)" class="p-2 text-gray-400 hover:text-red-500"><i class="ti ti-trash"></i></button></div>
             </div>
           </template>
         </div>
       </div>
     </template>
 
-    <!-- Editor View -->
-    <template x-if="view === 'editor'">
-      <div>
-        <div class="flex justify-between items-center mb-8">
+    <!-- Workspace (Editor/Canvas) -->
+    <template x-if="view === 'editor' || view === 'canvas'">
+      <div class="flex flex-col h-full">
+        <!-- TOP NAV -->
+        <div class="flex justify-between items-center mb-6">
           <div class="flex items-center gap-4">
-            <button @click="view = 'list'" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400">
-              <i class="ti ti-list text-xl"></i>
-            </button>
+            <button @click="view = 'list'" class="p-2 hover:bg-gray-100 rounded-lg text-gray-400"><i class="ti ti-list text-xl"></i></button>
             <div>
               <input type="text" x-model="workflow.name" class="text-2xl font-bold bg-transparent border-none focus:ring-0 p-0 w-64" placeholder="Workflow Name">
               <div class="flex items-center gap-2">
-                <p class="text-sm text-gray-500">Status: 
-                  <select x-model="workflow.status" class="bg-transparent border-none text-xs p-0 focus:ring-0 cursor-pointer" :class="workflow.status === 'active' ? 'text-green-600 font-bold' : 'text-gray-400'">
-                    <option value="inactive">INACTIVE</option>
-                    <option value="active">ACTIVE</option>
-                  </select>
-                </p>
-                <template x-if="workflow._id">
-                  <button @click="showRuns = !showRuns" class="text-[10px] font-bold text-indigo-600 hover:underline uppercase">
-                    <span x-text="showRuns ? 'Hide Runs' : 'Show Runs'"></span>
-                  </button>
-                </template>
+                <p class="text-sm text-gray-500">Status: <select x-model="workflow.status" class="bg-transparent border-none text-xs p-0 focus:ring-0 cursor-pointer" :class="workflow.status === 'active' ? 'text-green-600 font-bold' : 'text-gray-400'"><option value="inactive">INACTIVE</option><option value="active">ACTIVE</option></select></p>
+                <button x-show="workflow._id" @click="showRuns = !showRuns" class="text-[10px] font-bold text-indigo-600 hover:underline uppercase" x-text="showRuns ? 'Hide Runs' : 'Show Runs'"></button>
               </div>
             </div>
           </div>
           <div class="flex items-center gap-3">
-            <button @click="testWorkflow()" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center gap-2">
-              <i class="ti ti-player-play"></i> Test
-            </button>
-            <button @click="saveWorkflow()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
-              <i class="ti ti-device-floppy"></i> Save
-            </button>
+            <button @click="testWorkflow()" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><i class="ti ti-player-play"></i> Test</button>
+            <button @click="saveWorkflow()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2"><i class="ti ti-device-floppy"></i> Save</button>
           </div>
         </div>
 
-        <!-- Runs History Section -->
-        <div x-show="showRuns" x-transition class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
-          <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-            <h3 class="text-sm font-bold text-gray-700 uppercase">Execution History</h3>
-            <button @click="loadRuns()" class="text-xs text-indigo-600 hover:text-indigo-700"><i class="ti ti-refresh"></i> Refresh</button>
-          </div>
-          <div class="max-h-64 overflow-y-auto">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-gray-50 text-gray-400 uppercase font-bold sticky top-0">
-                <tr>
-                  <th class="px-4 py-2">Date</th>
-                  <th class="px-4 py-2">Status</th>
-                  <th class="px-4 py-2">Duration</th>
-                  <th class="px-4 py-2">Nodes</th>
-                  <th class="px-4 py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                <template x-for="run in runs" :key="run._id">
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2 text-gray-500" x-text="new Date(run.executedAt).toLocaleString()"></td>
-                    <td class="px-4 py-2">
-                      <span :class="{
-                        'text-green-600 bg-green-50': run.status === 'completed',
-                        'text-red-600 bg-red-50': run.status === 'failed',
-                        'text-blue-600 bg-blue-50': run.status === 'running'
-                      }" class="px-2 py-0.5 rounded text-[10px] font-bold" x-text="run.status.toUpperCase()"></span>
-                    </td>
-                    <td class="px-4 py-2 text-gray-500" x-text="run.duration + 'ms'"></td>
-                    <td class="px-4 py-2 text-gray-500" x-text="run.log?.length || 0"></td>
-                    <td class="px-4 py-2">
-                      <button @click="inspectRun(run)" class="text-indigo-600 hover:underline">Inspect</button>
-                    </td>
-                  </tr>
-                </template>
-                <template x-if="runs.length === 0">
-                  <tr>
-                    <td colspan="5" class="px-4 py-8 text-center text-gray-400">No execution history found</td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
+        <!-- TABS -->
+        <div class="flex justify-start mb-6">
+          <div class="flex bg-gray-100 p-1 rounded-lg">
+            <button @click="view = 'editor'" :class="view === 'editor' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500'" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2"><i class="ti ti-edit"></i> Stack</button>
+            <button @click="view = 'canvas'" :class="view === 'canvas' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500'" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2"><i class="ti ti-viewport"></i> Canvas</button>
           </div>
         </div>
 
-        <!-- Run Inspector Modal -->
-        <div x-show="inspectedRun" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" x-cloak>
-          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 class="font-bold text-gray-900">Run Details</h3>
-              <button @click="inspectedRun = null" class="text-gray-400 hover:text-gray-600"><i class="ti ti-x"></i></button>
-            </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
-              <div class="grid grid-cols-2 gap-4">
-                <div class="bg-gray-50 p-3 rounded-lg">
-                  <span class="text-[10px] font-bold text-gray-400 uppercase block">Context Payload</span>
-                  <pre class="text-[10px] font-mono mt-1 text-gray-600" x-text="JSON.stringify(inspectedRun?.context?.payload, null, 2)"></pre>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-lg">
-                  <span class="text-[10px] font-bold text-gray-400 uppercase block">Result</span>
-                  <pre class="text-[10px] font-mono mt-1 text-gray-600" x-text="JSON.stringify(inspectedRun?.context?.lastNode, null, 2)"></pre>
+        <!-- CANVAS VIEW -->
+        <div x-show="view === 'canvas'" class="fixed inset-x-0 bottom-0 z-[10000] bg-slate-900 overflow-hidden flex flex-row" style="top: 154px;" x-cloak>
+          <div class="flex-1 relative cursor-grab active:cursor-grabbing overflow-hidden" @mousedown="canvasStartPan($event)" @mousemove="canvasDoPan($event)" @mouseup="canvasEndPan()" @wheel="canvasDoZoom($event)">
+            <div class="absolute inset-0 origin-center flex items-center justify-center pointer-events-none" :style="'transform: translate(' + canvasPan.x + 'px, ' + canvasPan.y + 'px) scale(' + canvasZoom + ')'">
+              <div class="flex flex-col items-center pointer-events-auto">
+                <div @click="openCanvasEdit('entrypoint')" class="bg-indigo-600 p-4 rounded-xl shadow-xl text-white mb-4 w-64 text-center cursor-pointer hover:ring-4 ring-indigo-400/50 transition-all"><i class="ti ti-webhook text-2xl mb-1"></i><div class="font-bold uppercase text-xs">Entrypoint</div></div>
+                <div class="flex flex-col items-center">
+                  <button @click="openCanvasAdd(workflow.nodes)" class="w-6 h-6 bg-slate-700 text-slate-400 rounded-full flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-lg z-10 border-2 border-slate-900"><i class="ti ti-plus text-xs font-bold"></i></button>
+                  <div class="flex flex-col items-center"><template x-for="(node, idx) in workflow.nodes" :key="node.id"><div class="flex flex-col items-center"><div class="w-0.5 h-8 bg-indigo-500/30"></div><div x-html="renderCanvasNode(node, 'workflow.nodes', idx)"></div></div></template></div>
                 </div>
               </div>
-              <div class="space-y-2">
-                <span class="text-[10px] font-bold text-gray-400 uppercase">Execution Logs</span>
-                <div class="space-y-1">
-                  <template x-for="log in inspectedRun?.log">
-                    <div class="text-[10px] font-mono p-2 rounded border border-gray-100 flex justify-between items-center">
-                      <div>
-                        <span :class="log.status === 'success' ? 'text-green-600' : 'text-red-600'" class="font-bold" x-text="log.type.toUpperCase()"></span>:
-                        <span class="text-gray-500" x-text="log.nodeId"></span>
-                      </div>
-                      <span class="text-gray-400" x-text="log.duration + 'ms'"></span>
+            </div>
+          </div>
+          <!-- Canvas Drawer -->
+          <div x-show="canvasDrawer.open" x-transition class="w-96 bg-white border-l border-slate-200 shadow-2xl z-30 flex flex-col" x-cloak>
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50"><h3 class="font-bold text-slate-800 flex items-center gap-2"><i :class="canvasDrawer.mode === 'edit' ? 'ti ti-edit' : 'ti ti-plus'" class="text-indigo-600"></i><span x-text="canvasDrawer.mode === 'edit' ? 'Edit Node' : 'Add Node'"></span></h3><button @click="canvasDrawer.open = false" class="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-200 rounded"><i class="ti ti-x"></i></button></div>
+            <div class="flex-1 overflow-y-auto p-4">
+              <template x-if="canvasDrawer.mode === 'add'"><div class="space-y-4"><input type="text" x-model="canvasDrawer.search" placeholder="Search..." class="w-full px-4 py-2 bg-slate-100 border-none rounded-lg text-sm"><div class="space-y-2"><template x-for="type in filteredCanvasNodes" :key="type.id"><button @click="addNodeToCanvas(type.id)" class="w-full p-3 flex items-start gap-4 hover:bg-slate-50 rounded-xl border border-transparent transition-all text-left"><div :class="type.color" class="p-2 rounded-lg text-white shadow-sm"><i :class="'ti ' + type.icon" class="text-xl"></i></div><div><div class="font-bold text-slate-800 text-sm" x-text="type.name"></div><div class="text-[10px] text-slate-500" x-text="type.desc"></div></div></button></template></div></div></template>
+              <template x-if="(canvasDrawer.mode === 'edit' || canvasDrawer.mode === 'edit_entrypoint') && canvasDrawer.node">
+                <div class="space-y-6">
+                  <div class="flex items-center gap-4 pb-4 border-b border-slate-50"><div :class="canvasDrawer.mode === 'edit_entrypoint' ? 'bg-indigo-600' : getNodeColor(canvasDrawer.node.type)" class="p-3 rounded-xl text-white"><i :class="canvasDrawer.mode === 'edit_entrypoint' ? 'ti ti-webhook' : getNodeIcon(canvasDrawer.node.type)" class="text-2xl"></i></div><div><div class="text-[10px] font-bold text-slate-400 uppercase" x-text="canvasDrawer.mode === 'edit_entrypoint' ? 'Entrypoint' : canvasDrawer.node.type"></div><template x-if="canvasDrawer.mode === 'edit_entrypoint'"><div class="font-bold text-slate-800 text-lg">Webhook Config</div></template><template x-if="canvasDrawer.mode !== 'edit_entrypoint'"><input type="text" x-model="canvasDrawer.node.name" class="font-bold text-slate-800 text-lg border-none p-0 focus:ring-0 w-full"></template></div></div>
+                  <div class="space-y-4">
+                    <template x-if="canvasDrawer.node.type === 'llm'"><div class="space-y-4"><div class="grid grid-cols-3 gap-2"><div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Provider</label><input type="text" x-model="canvasDrawer.node.provider" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2"></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Model</label><input type="text" x-model="canvasDrawer.node.model" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2"></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Temp</label><input type="range" x-model="canvasDrawer.node.temperature" min="0" max="2" step="0.1" class="w-full"></div></div><textarea x-model="canvasDrawer.node.prompt" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 h-64 font-mono"></textarea></div></template>
+                    <template x-if="canvasDrawer.node.type === 'http'"><div class="space-y-4"><div class="flex gap-2"><select x-model="canvasDrawer.node.method" class="text-xs border rounded p-2"><option>GET</option><option>POST</option></select><input type="text" x-model="canvasDrawer.node.url" class="flex-1 text-xs border rounded p-2" placeholder="URL"></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Headers (JSON)</label><textarea x-model="canvasDrawer.node.headersStr" @input="try { canvasDrawer.node.headers = JSON.parse($el.value) } catch(e) {}" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 h-32 font-mono"></textarea></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Body (JSON)</label><textarea x-model="canvasDrawer.node.bodyStr" @input="try { canvasDrawer.node.body = JSON.parse($el.value) } catch(e) {}" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 h-32 font-mono"></textarea></div></div></template>
+                    <template x-if="canvasDrawer.node.type === 'if'"><div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase">JS Condition</label><input type="text" x-model="canvasDrawer.node.condition" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono" placeholder="context.payload.body.amount > 100"></div></template>
+                    <template x-if="canvasDrawer.node.type === 'parallel'"><div class="space-y-4"><div class="flex justify-between items-center"><label class="text-[10px] font-bold text-slate-400 uppercase">Branches</label><button @click="canvasDrawer.node.branches.push([]); if(!canvasDrawer.node.branchNames) canvasDrawer.node.branchNames = []; canvasDrawer.node.branchNames.push('New Branch')" class="text-[10px] font-bold text-indigo-600 hover:underline uppercase">Add Branch</button></div><div class="space-y-2"><template x-for="(branch, idx) in canvasDrawer.node.branches" :key="idx"><div class="flex gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-100"><input type="text" x-model="(canvasDrawer.node.branchNames = canvasDrawer.node.branchNames || [])[idx]" :placeholder="'Branch ' + (idx + 1)" class="flex-1 text-xs bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-700"><button @click="canvasDrawer.node.branches.splice(idx, 1); canvasDrawer.node.branchNames.splice(idx, 1)" class="text-slate-300 hover:text-red-500 transition-colors"><i class="ti ti-trash text-sm"></i></button></div></template></div></div></template>
+                    <template x-if="canvasDrawer.node.type === 'exit'"><div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase">Response JSON</label><textarea x-model="canvasDrawer.node.bodyStr" @input="updateExitBody(canvasDrawer.node)" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 h-48 font-mono"></textarea></div></template>
+                    <div class="pt-6 border-t border-slate-100 space-y-4">
+                      <div class="flex items-center justify-between"><label class="text-[10px] font-bold text-slate-400 uppercase">Node Testing</label><button @click="testIsolatedNode(canvasDrawer.node)" :disabled="!workflow.testDataset" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100 disabled:opacity-50">Test Node</button></div>
+                      <template x-if="canvasDrawer.node.testOutput"><div class="space-y-2"><div class="flex justify-between items-center"><span class="text-[10px] font-bold text-gray-400 uppercase">Last Result</span><span class="text-[10px] text-green-600 font-bold uppercase">SUCCESS</span></div><div class="bg-slate-900 rounded-xl p-3 border border-slate-800 shadow-inner max-h-48 overflow-y-auto"><pre class="text-[10px] font-mono text-indigo-300" x-text="JSON.stringify(canvasDrawer.node.testOutput, null, 2)"></pre></div></div></template>
+                      <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100"><span class="text-[10px] font-bold text-slate-500 uppercase">Expected Context</span><pre class="text-[9px] font-mono text-slate-500 overflow-x-auto" x-text="JSON.stringify(workflow.testDataset, null, 2)"></pre></div>
+                      <button @click="confirmDeleteNode(canvasDrawer.node.id)" class="w-full py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg border border-red-100 uppercase">Delete Node</button>
                     </div>
-                  </template>
+                  </div>
                 </div>
-              </div>
+              </template>
             </div>
           </div>
+          <div class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-800/80 backdrop-blur border border-slate-700 px-4 py-2 rounded-full flex gap-6 text-[10px] font-bold text-slate-400 uppercase pointer-events-none z-20"><div>Scroll to Zoom</div><div>Drag to Pan</div><div>ESC to Exit</div></div>
         </div>
 
-        <!-- Webhook Entrypoint Card -->
-        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-4">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold flex items-center gap-2">
-              <i class="ti ti-webhook text-indigo-500"></i> Webhook Entrypoint
-            </h2>
-            <div class="flex items-center gap-4">
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] font-bold text-gray-400 uppercase">Await Response</span>
-                <button @click="workflow.entrypoint.awaitResponse = !workflow.entrypoint.awaitResponse" 
-                        :class="workflow.entrypoint.awaitResponse ? 'bg-indigo-600' : 'bg-gray-200'"
-                        class="relative inline-flex h-4 w-8 items-center rounded-full transition-colors">
-                  <span :class="workflow.entrypoint.awaitResponse ? 'translate-x-4' : 'translate-x-1'" class="inline-block h-2 w-2 transform rounded-full bg-white transition-transform"></span>
-                </button>
-              </div>
+        <!-- STACK WORKSPACE CONTENT -->
+        <div x-show="view === 'editor'" class="space-y-6">
+          <div x-show="showRuns" x-transition class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
+            <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center"><h3 class="text-sm font-bold text-gray-700 uppercase">Execution History</h3><button @click="loadRuns()" class="text-xs text-indigo-600 hover:text-indigo-700"><i class="ti ti-refresh"></i> Refresh</button></div>
+            <div class="max-h-64 overflow-y-auto">
+              <table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-400 font-bold sticky top-0 uppercase"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Duration</th><th class="px-4 py-2">Nodes</th><th class="px-4 py-2">Action</th></tr></thead><tbody class="divide-y divide-gray-100"><template x-for="run in runs" :key="run._id"><tr class="hover:bg-gray-50"><td class="px-4 py-2 text-gray-500" x-text="new Date(run.executedAt).toLocaleString()"></td><td class="px-4 py-2"><span :class="{'text-green-600 bg-green-50': run.status === 'completed', 'text-red-600 bg-red-50': run.status === 'failed'}" class="px-2 py-0.5 rounded text-[10px] font-bold" x-text="run.status.toUpperCase()"></span></td><td class="px-4 py-2 text-gray-500" x-text="run.duration + 'ms'"></td><td class="px-4 py-2 text-gray-500" x-text="run.log?.length || 0"></td><td class="px-4 py-2"><button @click="inspectRun(run)" class="text-indigo-600 hover:underline">Inspect</button></td></tr></template></tbody></table>
             </div>
           </div>
-
-          <!-- Test Dataset Display -->
-          <template x-if="workflow.testDataset && workflow._id">
-            <div class="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-[10px] font-bold text-amber-600 uppercase">Active Test Dataset</span>
-                <button @click="testConfig.method = workflow.testDataset.method; testConfig.body = JSON.stringify(workflow.testDataset.body || {}, null, 2); testConfig.query = JSON.stringify(workflow.testDataset.query || {}, null, 2); testConfig.headers = JSON.stringify(workflow.testDataset.headers || {}, null, 2); showTestPanel = true;" 
-                        class="text-[10px] font-bold text-amber-700 hover:underline uppercase">Edit Dataset</button>
-              </div>
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-[10px] font-mono">
-                <div>
-                  <span class="text-amber-500 font-bold">Method:</span> <span x-text="workflow.testDataset.method"></span>
+          <template x-if="inspectedRun">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden mb-8" x-data="{ selectedLogIndex: 0 }">
+              <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center"><div class="flex items-center gap-3"><h3 class="text-sm font-bold text-gray-700 uppercase">Run Details</h3><span :class="{'text-green-600 bg-green-50': inspectedRun.status === 'completed', 'text-red-600 bg-red-50': inspectedRun.status === 'failed'}" class="px-2 py-0.5 rounded text-[10px] font-bold" x-text="inspectedRun.status.toUpperCase()"></span></div><button @click="inspectedRun = null" class="text-gray-400 hover:text-gray-600"><i class="ti ti-x"></i></button></div>
+              <div class="flex flex-col md:flex-row h-[500px]">
+                <div class="w-full md:w-1/3 border-r border-gray-100 overflow-y-auto p-4 space-y-2">
+                  <template x-for="(log, idx) in inspectedRun.log" :key="idx"><button @click="selectedLogIndex = idx" :class="selectedLogIndex === idx ? 'bg-indigo-50 border-indigo-200' : 'hover:bg-gray-50'" class="w-full text-left p-3 rounded-lg border transition-all"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-900" x-text="log.nodeName || log.type.toUpperCase()"></span><span class="text-[9px] font-mono text-gray-400" x-text="log.duration + 'ms'"></span></div><span :class="log.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase" x-text="log.status"></span></button></template>
                 </div>
-                <div class="truncate">
-                  <span class="text-amber-500 font-bold">Query:</span> <span x-text="JSON.stringify(workflow.testDataset.query)"></span>
-                </div>
-                <div class="truncate">
-                  <span class="text-amber-500 font-bold">Body:</span> <span x-text="JSON.stringify(workflow.testDataset.body)"></span>
+                <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50">
+                  <div class="grid grid-cols-2 gap-4"><div class="bg-white p-4 rounded-xl border shadow-sm"><span class="text-[10px] font-bold text-gray-400 uppercase block mb-2">Payload</span><pre class="text-[10px] font-mono text-gray-600" x-text="JSON.stringify(inspectedRun.context?.payload, null, 2)"></pre></div><div class="bg-white p-4 rounded-xl border shadow-sm"><span class="text-[10px] font-bold text-gray-400 uppercase block mb-2">Result</span><pre class="text-[10px] font-mono text-indigo-600 font-bold" x-text="JSON.stringify(inspectedRun.context?.lastNode, null, 2)"></pre></div></div>
+                  <template x-if="inspectedRun.log[selectedLogIndex]"><div class="bg-white rounded-xl border p-4"><pre class="text-[10px] font-mono text-gray-700 overflow-x-auto" x-text="JSON.stringify(inspectedRun.log[selectedLogIndex].result, null, 2)"></pre></div></template>
                 </div>
               </div>
             </div>
           </template>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div class="space-y-2">
-              <label class="text-[10px] font-bold text-gray-400 uppercase">Allowed Methods</label>
-              <div class="flex gap-2">
-                <template x-for="m in ['GET', 'POST', 'PUT', 'DELETE']">
-                  <button @click="toggleMethod(m)" 
-                          :class="workflow.entrypoint.allowedMethods?.includes(m) ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-gray-50 text-gray-400 border-gray-100'"
-                          class="px-2 py-1 text-[10px] font-bold border rounded uppercase transition-colors" x-text="m"></button>
-                </template>
-              </div>
-            </div>
-            <div class="space-y-2">
-              <label class="text-[10px] font-bold text-gray-400 uppercase">Authentication</label>
-              <div class="flex gap-2">
-                <select x-model="workflow.entrypoint.auth.type" class="text-xs border border-gray-100 bg-gray-50 rounded px-2 py-1">
-                  <option value="none">None</option>
-                  <option value="header">Custom Header</option>
-                  <option value="bearer">Bearer Token</option>
-                </select>
-                <template x-if="workflow.entrypoint.auth.type !== 'none'">
-                  <div class="flex gap-1 flex-1">
-                    <template x-if="workflow.entrypoint.auth.type === 'header'">
-                      <input type="text" x-model="workflow.entrypoint.auth.headerName" placeholder="X-API-Key" class="text-xs border border-gray-100 bg-gray-50 rounded px-2 py-1 flex-1">
-                    </template>
-                    <input type="password" x-model="workflow.entrypoint.auth.headerValue" placeholder="Secret Value" class="text-xs border border-gray-100 bg-gray-50 rounded px-2 py-1 flex-1">
-                  </div>
-                </template>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex gap-2">
-            <input type="text" readonly :value="getWebhookUrl()" class="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-600" id="webhook-url">
-            <button @click="copyWebhookUrl()" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-              <i class="ti ti-copy"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Advanced Test Panel -->
-        <div class="bg-slate-900 rounded-xl p-6 mb-8 text-white shadow-xl" x-show="showTestPanel" x-transition>
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-sm font-bold flex items-center gap-2">
-              <i class="ti ti-flask text-yellow-400"></i> Advanced Test Runner
-            </h3>
-            <button @click="showTestPanel = false" class="text-gray-400 hover:text-white"><i class="ti ti-x"></i></button>
-          </div>
-          
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:col-span-2 space-y-4">
-              <div class="flex gap-2">
-                <select x-model="testConfig.method" class="bg-slate-800 border-none rounded text-xs p-2">
-                  <option>GET</option>
-                  <option>POST</option>
-                </select>
-                <input type="text" :value="getWebhookUrl()" readonly class="bg-slate-800 border-none rounded text-xs p-2 flex-1 text-gray-400 font-mono">
-              </div>
-              
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label class="text-[10px] font-bold text-gray-500 uppercase">Query Params (JSON)</label>
-                  <textarea x-model="testConfig.query" class="w-full bg-slate-800 border-none rounded text-xs p-2 font-mono h-24" placeholder='{"id": "123"}'></textarea>
-                </div>
-                <div class="space-y-2">
-                  <label class="text-[10px] font-bold text-gray-500 uppercase">Body Payload (JSON)</label>
-                  <textarea x-model="testConfig.body" class="w-full bg-slate-800 border-none rounded text-xs p-2 font-mono h-24" placeholder='{"message": "Hello"}'></textarea>
-                </div>
-              </div>
-            </div>
-            
-            <div class="bg-slate-800/50 rounded-lg p-4 space-y-4">
-              <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold text-gray-500 uppercase">Last Execution</span>
-                <span :class="testResult.status === 'completed' ? 'text-green-400' : 'text-red-400'" class="text-[10px] font-bold uppercase" x-text="testResult.status || 'None'"></span>
-              </div>
-              
-              <div class="h-48 overflow-y-auto text-[10px] font-mono space-y-1 text-gray-400" id="test-log">
-                <template x-for="log in testResult.log">
-                  <div class="border-l-2 border-slate-700 pl-2 py-1">
-                    <span :class="log.status === 'success' ? 'text-green-500' : 'text-red-500'" x-text="log.type.toUpperCase()"></span>:
-                    <span x-text="log.message || (log.duration + 'ms')"></span>
-                  </div>
-                </template>
-              </div>
-
-              <button @click="runFullTest()" :disabled="testing" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-xs font-bold transition-colors disabled:opacity-50">
-                <span x-show="!testing">RUN FULL WORKFLOW</span>
-                <span x-show="testing">EXECUTING...</span>
-              </button>
-
-              <button @click="runFullTest(true)" :disabled="testing" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold transition-colors disabled:opacity-50 mt-2">
-                <span>SET TEST DATASET ONLY</span>
-              </button>
-              <p class="text-[9px] text-gray-500 mt-1 text-center italic">Sets dataset in order to test nodes in isolation</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Nodes Stack -->
-        <div class="space-y-0">
-          <template x-for="(node, index) in workflow.nodes" :key="node.id">
-            <div class="flex flex-col items-center">
-              <div class="node-connector"></div>
-              <div class="w-full bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative group">
-                <!-- Node Header -->
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                    <div :class="getNodeColor(node.type)" class="p-2 rounded-lg text-white relative">
-                      <i :class="getNodeIcon(node.type)" class="text-lg"></i>
-                      <template x-if="node.testResult">
-                        <div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" title="Node has test result"></div>
-                      </template>
-                    </div>
-                    <div>
-                      <h3 class="font-bold text-gray-900" x-text="node.type.toUpperCase()"></h3>
-                      <div class="flex items-center gap-1">
-                        <input type="text" x-model="node.name" @input="validateNodeNames()" placeholder="node_name" 
-                               :class="node.nameError ? 'text-red-500 border-red-200 bg-red-50' : 'text-gray-400 border-transparent'"
-                               class="text-xs font-mono bg-transparent border rounded px-1 focus:ring-0 p-0 h-4 w-32">
-                        <template x-if="node.nameError">
-                          <span class="text-[8px] text-red-500 font-bold uppercase" x-text="node.nameError"></span>
-                        </template>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button @click="testIsolatedNode(node)" 
-                            :disabled="!workflow.testDataset"
-                            :class="!workflow.testDataset ? 'opacity-30 cursor-not-allowed' : 'hover:text-indigo-600'"
-                            class="p-2 text-gray-400 transition-colors" title="Test this node only">
-                      <i class="ti ti-flask"></i>
-                    </button>
-                    <button @click="removeNode(index)" class="text-gray-400 hover:text-red-500">
-                      <i class="ti ti-trash"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Node Config -->
-                <div class="space-y-4">
-                  <!-- Node Debug Context -->
-                  <div class="p-2 bg-blue-50 rounded border border-blue-100 text-[10px] font-mono text-blue-700" x-show="workflow.testDataset">
-                    <div class="flex justify-between items-center mb-1">
-                      <span class="font-bold uppercase italic opacity-70">Expected Context</span>
-                      <i class="ti ti-info-circle"></i>
-                    </div>
-                    <div class="space-y-2">
-                      <div>
-                        <span class="text-blue-400 font-bold block mb-1">Context Reference:</span>
-                        <div class="space-y-1">
-                          <div class="flex flex-col gap-1 bg-blue-100/30 p-1.5 rounded">
-                            <div class="flex items-center justify-between text-[9px]">
-                              <span class="text-blue-500 font-bold">entrypoint</span>
-                            </div>
-                            <pre class="text-[8px] text-blue-600/70 truncate" x-text="JSON.stringify(workflow.testDataset || { body: {}, query: {} })"></pre>
-                          </div>
-                          <template x-for="(prevNode, i) in workflow.nodes.slice(0, index)">
-                            <div class="flex items-center justify-between text-[9px] bg-blue-100/30 p-1 rounded">
-                              <span class="text-blue-500" x-text="prevNode.name || 'node_' + i"></span>
-                              <span class="text-gray-400 italic" x-text="prevNode.type === 'llm' ? '{result: string}' : '{...}'"></span>
-                            </div>
-                          </template>
-                        </div>
-                      </div>
-                      <div>
-                        <span class="text-blue-400 font-bold block mb-1">lastNode (Previous):</span>
-                        <pre class="bg-blue-100/50 p-1.5 rounded" x-text="JSON.stringify(index === 0 ? { body: workflow.testDataset?.body || {} } : { result: '...' }, null, 2)"></pre>
-                      </div>
-                    </div>
-                  </div>
-                  <!-- LLM Node -->
-                  <template x-if="node.type === 'llm'">
-                    <div class="space-y-4">
-                      <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <div class="space-y-1">
-                          <label class="text-[10px] font-bold text-gray-400 uppercase">Provider</label>
-                          <input type="text" x-model="node.provider" placeholder="openrouter" class="w-full text-xs border border-gray-100 bg-gray-50 rounded px-2 py-1.5">
-                        </div>
-                        <div class="space-y-1">
-                          <label class="text-[10px] font-bold text-gray-400 uppercase">Model</label>
-                          <input type="text" x-model="node.model" placeholder="minimax/minimax-m2.1" class="w-full text-xs border border-gray-100 bg-gray-50 rounded px-2 py-1.5">
-                        </div>
-                        <div class="space-y-1">
-                          <label class="text-[10px] font-bold text-gray-400 uppercase">Temperature (<span x-text="node.temperature || 0.7"></span>)</label>
-                          <input type="range" x-model="node.temperature" min="0" max="2" step="0.1" class="w-full">
-                        </div>
-                      </div>
-                      <div class="space-y-2">
-                        <label class="text-xs font-semibold text-gray-500 uppercase">System Prompt / Instruction</label>
-                        <textarea x-model="node.prompt" class="w-full text-sm border border-gray-200 rounded-lg p-2 focus:ring-indigo-500 h-24" placeholder="Use {{payload.body.x}} or {{lastNode.result}} to reference data..."></textarea>
-                      </div>
-                    </div>
-                  </template>
-
-                  <!-- IF Node -->
-                  <template x-if="node.type === 'if'">
-                    <div class="space-y-2">
-                      <label class="text-xs font-semibold text-gray-500 uppercase">JS Condition</label>
-                      <input type="text" x-model="node.condition" class="w-full text-sm font-mono border border-gray-200 rounded-lg p-2" placeholder="context.payload.body.amount > 100">
-                    </div>
-                  </template>
-
-                  <!-- HTTP Node -->
-                  <template x-if="node.type === 'http'">
-                    <div class="space-y-4">
-                      <div class="grid grid-cols-4 gap-2">
-                        <select x-model="node.method" class="text-sm border border-gray-200 rounded-lg p-2">
-                          <option>GET</option>
-                          <option>POST</option>
-                        </select>
-                        <input type="text" x-model="node.url" class="col-span-3 text-sm border border-gray-200 rounded-lg p-2" placeholder="https://api.example.com">
-                      </div>
-                    </div>
-                  </template>
-
-                  <!-- EXIT Node -->
-                  <template x-if="node.type === 'exit'">
-                    <div class="space-y-2">
-                      <label class="text-xs font-semibold text-gray-500 uppercase">Response JSON</label>
-                      <textarea x-model="node.bodyStr" @input="updateExitBody(node)" class="w-full text-sm font-mono border border-gray-200 rounded-lg p-2 h-24" placeholder='{"success": "{{lastNode.response}}"}'></textarea>
-                    </div>
-                  </template>
-
-                  <!-- Node Test Output -->
-                  <div x-show="node.testOutput" x-transition class="mt-4 p-3 bg-gray-900 rounded-lg">
-                    <div class="flex justify-between items-center mb-2">
-                      <span class="text-[10px] font-bold text-gray-500 uppercase">Node Output</span>
-                      <button @click="node.testOutput = null" class="text-gray-500 hover:text-white text-xs">&times;</button>
-                    </div>
-                    <pre class="text-[10px] text-green-400 font-mono whitespace-pre-wrap" x-text="JSON.stringify(node.testOutput, null, 2)"></pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- Add Node Button -->
-          <div class="flex flex-col items-center mt-4">
-            <div class="node-connector"></div>
-            <div class="flex gap-2">
-              <button @click="addNode('llm')" class="p-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100 transition-colors" title="Add LLM Node">
-                <i class="ti ti-brain"></i>
-              </button>
-              <button @click="addNode('if')" class="p-2 bg-yellow-50 text-yellow-600 rounded-full hover:bg-yellow-100 transition-colors" title="Add IF Node">
-                <i class="ti ti-git-branch"></i>
-              </button>
-              <button @click="addNode('http')" class="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Add HTTP Node">
-                <i class="ti ti-world"></i>
-              </button>
-              <button @click="addNode('exit')" class="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Add EXIT Node">
-                <i class="ti ti-door-exit"></i>
-              </button>
+          <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-4"><h2 class="text-lg font-semibold flex items-center gap-2 mb-4"><i class="ti ti-webhook text-indigo-500"></i> Webhook Entrypoint</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="space-y-2"><label class="text-[10px] font-bold text-gray-400 uppercase">Allowed Methods</label><div class="flex gap-2"><template x-for="m in ['GET', 'POST', 'PUT', 'DELETE']"><button @click="toggleMethod(m)" :class="workflow.entrypoint.allowedMethods?.includes(m) ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-50'" class="px-2 py-1 text-[10px] font-bold border rounded uppercase" x-text="m"></button></template></div></div></div></div>
+          <div class="w-full pb-8">
+            <div class="min-w-max space-y-0 px-4">
+              <template x-for="(node, index) in workflow.nodes" :key="node.id"><div class="flex flex-col items-center"><div class="node-connector"></div><div class="w-full bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div :class="getNodeColor(node.type)" class="p-2 rounded-lg text-white relative"><i :class="getNodeIcon(node.type)" class="text-lg"></i></div><h3 class="font-bold text-gray-900" x-text="node.type.toUpperCase()"></h3></div><button @click="deleteNode(node.id)" class="text-gray-400 hover:text-red-500"><i class="ti ti-trash"></i></button></div><div x-show="node.testOutput" class="mt-4 p-3 bg-gray-900 rounded-lg overflow-hidden"><pre class="text-[10px] text-green-400 font-mono" x-text="JSON.stringify(node.testOutput, null, 2)"></pre></div></div></div></template>
+              <div class="flex flex-col items-center mt-4"><div class="node-connector"></div><div class="flex gap-2"><button @click="addNode('llm')" class="p-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100"><i class="ti ti-brain"></i></button><button @click="addNode('if')" class="p-2 bg-yellow-50 text-yellow-600 rounded-full hover:bg-yellow-100"><i class="ti ti-git-branch"></i></button><button @click="addNode('http')" class="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100"><i class="ti ti-world"></i></button><button @click="addNode('parallel')" class="p-2 bg-purple-50 text-purple-600 rounded-full hover:bg-purple-100"><i class="ti ti-git-merge"></i></button><button @click="addNode('exit')" class="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100"><i class="ti ti-door-exit"></i></button></div></div>
             </div>
           </div>
         </div>
       </div>
     </template>
-  </div>
 
-  <script>
-    function workflowEditor() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const workflowIdFromUrl = window.location.pathname.split('/').pop();
-
-      return {
-        view: 'list', 
-        workflows: [],
-        workflow: {
-          name: '',
-          status: 'inactive',
-          entrypoint: { 
-            awaitResponse: false, 
-            allowedMethods: ['POST', 'GET'],
-            auth: { type: 'none', headerName: '', headerValue: '' }
-          },
-          testDataset: {
-            method: 'POST',
-            body: { message: 'Hello' },
-            query: {},
-            headers: {}
-          },
-          nodes: []
-        },
-        showTestPanel: false,
-        testing: false,
-        testConfig: {
-          method: 'POST',
-          body: '{\n  "message": "Hello"\n}',
-          query: '{}',
-          headers: '{}'
-        },
-        testResult: { status: null, log: [], context: null },
-        showRuns: false,
-        runs: [],
-        inspectedRun: null,
-        toasts: [],
-        
-        showToast(message, type = 'success') {
-          console.log('Showing toast:', message, type);
-          const id = Date.now();
-          this.toasts.push({ id, message, type, show: true });
-          console.log('Current toasts:', JSON.stringify(this.toasts));
-          setTimeout(() => {
-            const toast = this.toasts.find(t => t.id === id);
-            if (toast) {
-              toast.show = false;
-              console.log('Hiding toast:', id);
-            }
-            setTimeout(() => {
-              this.toasts = this.toasts.filter(t => t.id !== id);
-              console.log('Removed toast:', id);
-            }, 500);
-          }, 3000);
-        },
-        
-        async init() {
-          await this.loadWorkflows();
-          if (workflowIdFromUrl !== 'new' && workflowIdFromUrl.length > 5) {
-            const wf = this.workflows.find(w => w._id === workflowIdFromUrl);
-            if (wf) this.editWorkflow(wf);
-            else {
-              const res = await fetch(`/saas/api/workflows/${workflowIdFromUrl}`);
-              if (res.ok) this.editWorkflow(await res.json());
-            }
-          } else if (workflowIdFromUrl === 'new') {
-            this.createNew();
-          }
-        },
-        async loadWorkflows() {
-          const res = await fetch('/saas/api/workflows');
-          this.workflows = await res.json();
-        },
-        createNew() {
-          this.workflow = {
-            name: 'New Workflow',
-            status: 'inactive',
-            entrypoint: { 
-              awaitResponse: false, 
-              allowedMethods: ['POST', 'GET'],
-              auth: { type: 'none', headerName: '', headerValue: '' }
-            },
-            testDataset: {
-              method: 'POST',
-              body: { message: 'Hello' },
-              query: {},
-              headers: {}
-            },
-            nodes: []
-          };
-          this.view = 'editor';
-        },
-        editWorkflow(wf) {
-          this.workflow = JSON.parse(JSON.stringify(wf));
-          this.showRuns = false;
-          this.runs = [];
-          this.inspectedRun = null;
-          if (!this.workflow.testDataset) {
-            this.workflow.testDataset = { method: 'POST', body: { message: 'Hello' }, query: {}, headers: {} };
-          }
-          if (!this.workflow.entrypoint.auth) {
-            this.workflow.entrypoint.auth = { type: 'none', headerName: '', headerValue: ' ' };
-          }
-          if (!this.workflow.entrypoint.allowedMethods) {
-            this.workflow.entrypoint.allowedMethods = ['POST', 'GET'];
-          }
-          // Prep EXIT nodes for textarea and validate names
-          this.workflow.nodes.forEach(n => {
-            if (n.type === 'exit') n.bodyStr = JSON.stringify(n.body, null, 2);
-            // Initialize testOutput from persisted testResult if available
-            n.testOutput = n.testResult || null;
-            if (!n.name) n.name = n.outputVar || '';
-          });
-          this.validateNodeNames();
-          this.view = 'editor';
-        },
-        toggleMethod(m) {
-          if (!this.workflow.entrypoint.allowedMethods) this.workflow.entrypoint.allowedMethods = [];
-          const idx = this.workflow.entrypoint.allowedMethods.indexOf(m);
-          if (idx > -1) this.workflow.entrypoint.allowedMethods.splice(idx, 1);
-          else this.workflow.entrypoint.allowedMethods.push(m);
-        },
-        async deleteWorkflow(id) {
-          if (!confirm('Are you sure?')) return;
-          await fetch(`/saas/api/workflows/${id}`, { method: 'DELETE' });
-          await this.loadWorkflows();
-        },
-        getWebhookUrl() {
-          return `${window.location.origin}/saas/w/${this.workflow._id || 'NEW'}`;
-        },
-        copyWebhookUrl() {
-          navigator.clipboard.writeText(this.getWebhookUrl());
-          alert('Copied to clipboard!');
-        },
-        addNode(type) {
-          const name = `node_${this.workflow.nodes.length + 1}`;
-          const newNode = {
-            id: 'node_' + Date.now(),
-            type: type,
-            name: name,
-            outputVar: name,
-            testOutput: null
-          };
-          if (type === 'llm') {
-            newNode.prompt = '';
-            newNode.provider = 'openrouter';
-            newNode.model = 'minimax/minimax-m2.1';
-            newNode.temperature = 0.7;
-          }
-          if (type === 'if') { newNode.condition = ''; newNode.then = []; newNode.else = []; }
-          if (type === 'http') { newNode.method = 'GET'; newNode.url = ''; newNode.headers = {}; newNode.body = {}; }
-          if (type === 'exit') { newNode.body = { success: true }; newNode.bodyStr = '{\n  "success": "{{lastNode.response}}"\n}'; }
-          
-          this.workflow.nodes.push(newNode);
-          this.validateNodeNames();
-        },
-        removeNode(index) {
-          this.workflow.nodes.splice(index, 1);
-          this.validateNodeNames();
-        },
-        validateNodeNames() {
-          const names = new Set();
-          const reserved = ['entrypoint', 'payload', 'nodes', 'lastNode', 'env', 'JSON', 'console'];
-          this.workflow.nodes.forEach(node => {
-            node.nameError = null;
-            if (!node.name) return;
-            if (reserved.includes(node.name)) {
-              node.nameError = 'Reserved name';
-            } else if (names.has(node.name)) {
-              node.nameError = 'Duplicate name';
-            } else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(node.name)) {
-              node.nameError = 'Invalid characters';
-            }
-            names.add(node.name);
-          });
-        },
-        updateExitBody(node) {
-          try {
-            node.body = JSON.parse(node.bodyStr);
-          } catch (e) {}
-        },
-        getNodeIcon(type) {
-          return {
-            llm: 'ti ti-brain',
-            if: 'ti ti-git-branch',
-            http: 'ti ti-world',
-            exit: 'ti ti-door-exit'
-          }[type];
-        },
-        getNodeColor(type) {
-          return {
-            llm: 'bg-indigo-500',
-            if: 'bg-yellow-500',
-            http: 'bg-blue-500',
-            exit: 'bg-red-500'
-          }[type];
-        },
-        async saveWorkflow(silent = false) {
-          const isNew = !this.workflow._id;
-          const method = isNew ? 'POST' : 'PUT';
-          const url = isNew ? '/saas/api/workflows' : `/saas/api/workflows/${this.workflow._id}`;
-          
-          const res = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.workflow)
-          });
-          
-          if (res.ok) {
-            const saved = await res.json();
-            if (!silent) this.showToast('Workflow saved!');
-            await this.loadWorkflows();
-            this.editWorkflow(saved);
-            if (!silent) history.pushState({}, '', `/saas/admin/workflows/${saved._id}`);
-          } else {
-            const err = await res.json();
-            if (!silent) this.showToast('Error saving: ' + (err.error || err.message), 'error');
-          }
-        },
-        async runFullTest(entrypointOnly = false) {
-          if (!this.workflow._id) {
-            this.showToast('Save workflow first', 'error');
-            return;
-          }
-          
-          const payload = {
-            method: this.testConfig.method,
-            body: JSON.parse(this.testConfig.body),
-            query: JSON.parse(this.testConfig.query),
-            headers: JSON.parse(this.testConfig.headers)
-          };
-
-          if (entrypointOnly) {
-            this.workflow.testDataset = payload;
-            await this.saveWorkflow(true); // Silent save
-            this.testResult.context = { payload, nodes: {}, lastNode: null };
-            this.showToast('Test dataset updated. You can now test nodes in isolation.');
-            return;
-          }
-
-          this.testing = true;
-          try {
-            const res = await fetch(`/saas/api/workflows/${this.workflow._id}/test`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+    <script>
+      function workflowEditor() {
+        const workflowIdFromUrl = window.location.pathname.split('/').pop();
+        return {
+          view: 'list', workflows: [], workflow: { name: '', status: 'inactive', entrypoint: { awaitResponse: false, allowedMethods: ['POST', 'GET'], auth: { type: 'none' } }, testDataset: { method: 'POST', body: { message: 'Hello' }, query: {}, headers: {} }, nodes: [] },
+          showTestPanel: false, testing: false, showRuns: false, testConfig: { method: 'POST', body: '{"message":"Hello"}', query: '{}', headers: '{}' }, testResult: { status: null, log: [], context: null }, runs: [], inspectedRun: null, toasts: [], canvasZoom: 1, canvasPan: { x: 0, y: 0 }, isPanning: false, panStart: { x: 0, y: 0 },
+          canvasDrawer: { open: false, mode: 'edit', node: null, parentArray: null, search: '' }, confirmModal: { show: false, title: '', message: '', onConfirm: () => {} },
+          init() {
+            window.canvasZoomSensitivity = 0.025; window.alpineWorkflow = this;
+            this.loadWorkflows().then(() => {
+              if (workflowIdFromUrl !== 'new' && workflowIdFromUrl.length > 5) {
+                const wf = this.workflows.find(w => w._id === workflowIdFromUrl);
+                if (wf) this.editWorkflow(wf); else fetch(`/saas/api/workflows/${workflowIdFromUrl}`).then(res => res.ok && res.json().then(data => this.editWorkflow(data)));
+              } else if (workflowIdFromUrl === 'new') this.createNew();
             });
-            this.testResult = await res.json();
-            if (this.showRuns) this.loadRuns();
-            this.showToast('Workflow executed successfully');
-          } catch (e) {
-            this.showToast('Invalid JSON in test config or execution failed', 'error');
-          } finally {
-            this.testing = false;
+          },
+          async loadWorkflows() { const res = await fetch('/saas/api/workflows'); this.workflows = await res.json(); },
+          createNew() { this.workflow = { name: 'New Workflow', status: 'inactive', entrypoint: { awaitResponse: false, allowedMethods: ['POST', 'GET'], auth: { type: 'none' } }, testDataset: { method: 'POST', body: { message: 'Hello' }, query: {}, headers: {} }, nodes: [] }; this.view = 'editor'; },
+          editWorkflow(wf) {
+            const currentView = this.view; this.workflow = JSON.parse(JSON.stringify(wf)); this.showRuns = false; this.runs = []; this.inspectedRun = null;
+            if (!this.workflow.testDataset) this.workflow.testDataset = { method: 'POST', body: { message: 'Hello' }, query: {}, headers: {} };
+            this.workflow.nodes.forEach(n => { if (n.type === 'exit') n.bodyStr = JSON.stringify(n.body, null, 2); n.testOutput = n.testResult || null; });
+            this.view = (currentView === 'list') ? 'editor' : currentView;
+          },
+          toggleMethod(m) { this.workflow.entrypoint.allowedMethods = this.workflow.entrypoint.allowedMethods || []; const idx = this.workflow.entrypoint.allowedMethods.indexOf(m); if (idx > -1) this.workflow.entrypoint.allowedMethods.splice(idx, 1); else this.workflow.entrypoint.allowedMethods.push(m); },
+          async deleteWorkflow(id) { if (confirm('Are you sure?')) { await fetch(`/saas/api/workflows/${id}`, { method: 'DELETE' }); await this.loadWorkflows(); } },
+          getWebhookUrl() { return window.location.origin + '/saas/w/' + (this.workflow._id || 'NEW'); },
+          copyWebhookUrl() { navigator.clipboard.writeText(this.getWebhookUrl()); this.showToast('Copied!'); },
+          addNode(type) { this.workflow.nodes.push({ id: 'node_' + Date.now(), type, name: 'node_' + (this.workflow.nodes.length + 1) }); },
+          deleteNode(id, array = null) {
+            const targetArray = array || this.workflow.nodes; const idx = targetArray.findIndex(n => n.id === id);
+            if (idx > -1) { targetArray.splice(idx, 1); return true; }
+            for (const n of targetArray) { if (n.then && this.deleteNode(id, n.then)) return true; if (n.else && this.deleteNode(id, n.else)) return true; if (n.branches) for (const b of n.branches) if (this.deleteNode(id, b)) return true; }
+            return false;
+          },
+          updateExitBody(node) { try { node.body = JSON.parse(node.bodyStr); } catch (e) {} },
+          getNodeIcon(type) { return { llm: 'ti-brain', if: 'ti-git-branch', http: 'ti-world', exit: 'ti-door-exit', parallel: 'ti-git-merge' }[type] || 'ti-circle'; },
+          getNodeColor(type) { return { llm: 'bg-indigo-500', if: 'bg-yellow-500', http: 'bg-blue-500', exit: 'bg-red-500', parallel: 'bg-purple-500' }[type]; },
+          async saveWorkflow(silent = false) {
+            const res = await fetch(this.workflow._id ? `/saas/api/workflows/${this.workflow._id}` : '/saas/api/workflows', { method: this.workflow._id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.workflow) });
+            if (res.ok) { const saved = await res.json(); if (!silent) this.showToast('Saved!'); await this.loadWorkflows(); this.editWorkflow(saved); }
+          },
+          async runFullTest(entrypointOnly = false) {
+            if (!this.workflow._id) return this.showToast('Save first', 'error');
+            try {
+              const payload = { method: this.testConfig.method, body: JSON.parse(this.testConfig.body), query: JSON.parse(this.testConfig.query), headers: JSON.parse(this.testConfig.headers) };
+              if (entrypointOnly) { this.workflow.testDataset = payload; await this.saveWorkflow(true); return this.showToast('Dataset set.'); }
+              this.testing = true; const res = await fetch(`/saas/api/workflows/${this.workflow._id}/test`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+              this.testResult = await res.json(); if (this.showRuns) this.loadRuns(); this.showToast('Ran.');
+            } catch (e) { this.showToast('Failed', 'error'); } finally { this.testing = false; }
+          },
+          confirmDeleteNode(id) { this.confirmModal = { show: true, title: 'Delete?', message: 'Sure?', onConfirm: () => this.deleteNode(id) }; },
+          async testIsolatedNode(node) {
+            const context = { entrypoint: this.workflow.testDataset, payload: this.workflow.testDataset, lastNode: this.workflow.testDataset };
+            try {
+              const res = await fetch(`/saas/api/workflows/${this.workflow._id}/nodes/${node.id}/test`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context, node }) });
+              const data = await res.json(); node.testOutput = data.result; node.testResult = data.result; this.showToast('Tested');
+            } catch (e) { this.showToast('Failed', 'error'); }
+          },
+          async loadRuns() { if (!this.workflow._id) return; const res = await fetch(`/saas/api/workflows/${this.workflow._id}/runs`); this.runs = await res.json(); },
+          inspectRun(run) { this.inspectedRun = run; }, testWorkflow() { this.showTestPanel = true; },
+          showToast(message, type = 'success') {
+            const id = Date.now(); this.toasts.push({ id, message, type, show: true });
+            setTimeout(() => { const t = this.toasts.find(x => x.id === id); if (t) t.show = false; setTimeout(() => this.toasts = this.toasts.filter(x => x.id !== id), 500); }, 3000);
+          },
+          openCanvasEdit(node) { if (node === 'entrypoint') this.canvasDrawer = { open: true, mode: 'edit_entrypoint', node: this.workflow.entrypoint }; else this.canvasDrawer = { open: true, mode: 'edit', node }; },
+          openCanvasAdd(parentArray, index = null) { this.canvasDrawer = { open: true, mode: 'add', parentArray, insertIndex: index, search: '' }; },
+          addNodeToCanvas(type) {
+            const newNode = { id: 'node_' + Date.now(), type, name: 'node_' + Date.now().toString().slice(-4) };
+            if (type === 'llm') { newNode.prompt = ''; newNode.provider = 'openrouter'; newNode.model = 'minimax/minimax-m2.1'; newNode.temperature = 0.7; }
+            if (type === 'if') { newNode.condition = ''; newNode.then = []; newNode.else = []; }
+            if (type === 'parallel') { newNode.branches = [[], []]; }
+            if (type === 'http') { newNode.method = 'GET'; newNode.url = ''; newNode.headers = {}; newNode.body = {}; }
+            if (type === 'exit') { newNode.body = { success: true }; newNode.bodyStr = '{"success":true}'; }
+            if (this.canvasDrawer.insertIndex !== null) this.canvasDrawer.parentArray.splice(this.canvasDrawer.insertIndex, 0, newNode); else this.canvasDrawer.parentArray.push(newNode);
+            this.canvasDrawer.open = false; this.showToast('Added');
+          },
+          get filteredCanvasNodes() {
+            const types = [ { id: 'llm', name: 'LLM Node', icon: 'ti-brain', color: 'bg-indigo-500', desc: 'AI generation' }, { id: 'if', name: 'IF Condition', icon: 'ti-git-branch', color: 'bg-yellow-500', desc: 'Logic split' }, { id: 'http', name: 'HTTP Request', icon: 'ti-world', color: 'bg-blue-500', desc: 'API calls' }, { id: 'parallel', name: 'Parallel Path', icon: 'ti-git-merge', color: 'bg-purple-500', desc: 'Multi-branch' }, { id: 'exit', name: 'Exit', icon: 'ti-door-exit', color: 'bg-red-500', desc: 'Response' } ];
+            return this.canvasDrawer.search ? types.filter(t => t.name.toLowerCase().includes(this.canvasDrawer.search.toLowerCase())) : types;
+          },
+          canvasStartPan(e) { this.isPanning = true; this.panStart = { x: e.clientX - this.canvasPan.x, y: e.clientY - this.canvasPan.y }; },
+          canvasDoPan(e) { if (!this.isPanning) return; this.canvasPan = { x: e.clientX - this.panStart.x, y: e.clientY - this.panStart.y }; },
+          canvasEndPan() { this.isPanning = false; },
+          canvasDoZoom(e) { e.preventDefault(); const s = window.canvasZoomSensitivity || 0.025; this.canvasZoom = Math.min(Math.max(0.2, this.canvasZoom + (e.deltaY > 0 ? -s : s)), 3); },
+          renderCanvasNode(node, path, idx) {
+            const icon = this.getNodeIcon(node.type); const color = this.getNodeColor(node.type); const nodePath = 'window.alpineWorkflow.' + path + '[' + idx + ']'; const arrayPath = 'window.alpineWorkflow.' + path;
+            let branches = '';
+            if (node.type === 'if') branches = '<div class="flex flex-col items-center w-full"><div class="w-0.5 h-8 bg-slate-200"></div><div class="flex gap-16"><div class="flex flex-col items-center">TRUE<div class="p-4 bg-green-50 rounded-2xl border border-green-100"><button onclick="event.stopPropagation(); window.alpineWorkflow.openCanvasAdd(' + nodePath + '.then)" class="w-6 h-6 bg-white border rounded-full">+</button><div>' + (node.then || []).map((bn, i) => this.renderCanvasNode(bn, path + '[' + idx + '].then', i)).join('') + '</div></div></div><div class="flex flex-col items-center">FALSE<div class="p-4 bg-red-50 rounded-2xl border border-red-100"><button onclick="event.stopPropagation(); window.alpineWorkflow.openCanvasAdd(' + nodePath + '.else)" class="w-6 h-6 bg-white border rounded-full">+</button><div>' + (node.else || []).map((bn, i) => this.renderCanvasNode(bn, path + '[' + idx + '].else', i)).join('') + '</div></div></div></div></div>';
+            const badge = node.testResult ? '<div class="absolute -top-2 -right-2 bg-green-500 text-white text-[8px] px-1.5 rounded-full">MOCK</div>' : '';
+            return '<div class="flex flex-col items-center"><div class="relative bg-white p-4 rounded-2xl shadow-xl border-2 min-w-[220px] cursor-pointer group" onclick="window.alpineWorkflow.openCanvasEdit(' + nodePath + ')">' + badge + '<div class="flex items-center gap-3"><div class="' + color + ' p-2 rounded-xl text-white"><i class="ti ' + icon + '"></i></div><div><div class="font-bold text-[11px] uppercase">' + node.type + '</div><div class="text-[10px] text-slate-400">' + (node.name || 'unnamed') + '</div></div></div></div>' + branches + '<div class="w-0.5 h-6 bg-slate-200"></div><button onclick="event.stopPropagation(); window.alpineWorkflow.openCanvasAdd(\'' + path + '\', ' + (idx + 1) + ')" class="w-8 h-8 bg-white border-2 rounded-full">+</button></div>';
           }
-        },
-        async testIsolatedNode(node) {
-          if (!this.workflow._id) {
-            this.showToast('Save workflow first', 'error');
-            return;
-          }
-          
-          // Rebuild context from previous nodes' testResults if they exist
-          const nodesContext = {};
-          let lastResult = null;
-          
-          this.workflow.nodes.forEach((n, idx) => {
-            const nodeIndex = this.workflow.nodes.indexOf(node);
-            if (idx < nodeIndex && n.testResult) {
-              const standardizedResult = (typeof n.testResult !== 'object' || n.testResult === null) 
-                ? { result: n.testResult } 
-                : n.testResult;
-              
-              if (n.name) nodesContext[n.name] = standardizedResult;
-              lastResult = standardizedResult;
-            }
-          });
-
-          const entrypoint = this.workflow.testDataset || { body: {}, query: {}, headers: {}, method: 'POST' };
-          
-          const context = { 
-            entrypoint: entrypoint,
-            payload: entrypoint,
-            nodes: {}, 
-            lastNode: lastResult || { 
-              method: entrypoint.method || 'POST',
-              body: entrypoint.body || {},
-              query: entrypoint.query || {},
-              headers: entrypoint.headers || {}
-            },
-            ...nodesContext
-          };
-
-          try {
-            const res = await fetch(`/saas/api/workflows/${this.workflow._id}/nodes/${node.id}/test`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ context, node }) // Send node data for dirty testing
-            });
-            const data = await res.json();
-            
-            // Update node output and persist in local state
-            node.testOutput = data.result;
-            node.testResult = data.result;
-            
-            this.showToast('Node tested successfully');
-            
-            // Persist the context in memory for next node testing
-            if (node.type !== 'exit') {
-              this.testResult.context = data.context;
-            }
-          } catch (e) {
-            this.showToast('Node test failed: ' + e.message, 'error');
-          }
-        },
-        async loadRuns() {
-          if (!this.workflow._id) return;
-          const res = await fetch(`/saas/api/workflows/${this.workflow._id}/runs`);
-          this.runs = await res.json();
-        },
-        inspectRun(run) {
-          this.inspectedRun = run;
-        },
-        testWorkflow() {
-          this.showTestPanel = true;
         }
       }
-    }
-  </script>
+    </script>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
