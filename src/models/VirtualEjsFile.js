@@ -53,7 +53,7 @@ const virtualEjsFileSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-virtualEjsFileSchema.index({ path: 1 });
+// virtualEjsFileSchema.index({ path: 1 }); // Removed duplicate index
 virtualEjsFileSchema.index({ inferred: 1, integrated: 1 });
 virtualEjsFileSchema.index({ enabled: 1, updatedAt: -1 });
 

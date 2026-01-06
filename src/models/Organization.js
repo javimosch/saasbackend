@@ -44,7 +44,7 @@ const organizationSchema = new mongoose.Schema({
   timestamps: true
 });
 
-organizationSchema.index({ slug: 1 }, { unique: true });
+// organizationSchema.index({ slug: 1 }, { unique: true }); // Removed duplicate index
 organizationSchema.index({ ownerUserId: 1, createdAt: -1 });
 organizationSchema.index({ status: 1 });
 

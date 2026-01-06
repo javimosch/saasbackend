@@ -25,7 +25,7 @@ const actionEventSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-actionEventSchema.index({ action: 1, createdAt: -1 });
+// actionEventSchema.index({ action: 1, createdAt: -1 }); // Removed duplicate index
 actionEventSchema.index({ actorType: 1, actorId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('ActionEvent', actionEventSchema);

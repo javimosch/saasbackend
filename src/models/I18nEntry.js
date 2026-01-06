@@ -70,7 +70,7 @@ const i18nEntrySchema = new mongoose.Schema(
 );
 
 i18nEntrySchema.index({ key: 1, locale: 1 }, { unique: true });
-i18nEntrySchema.index({ locale: 1, key: 1 });
+// i18nEntrySchema.index({ locale: 1, key: 1 }); // Removed duplicate index
 i18nEntrySchema.index({ edited: 1 });
 i18nEntrySchema.index({ seeded: 1 });
 

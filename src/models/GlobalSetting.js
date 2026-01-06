@@ -33,6 +33,6 @@ const globalSettingSchema = new mongoose.Schema({
   timestamps: true
 });
 
-globalSettingSchema.index({ key: 1 });
+// globalSettingSchema.index({ key: 1 }); // Removed duplicate index
 
 module.exports = mongoose.model('GlobalSetting', globalSettingSchema);

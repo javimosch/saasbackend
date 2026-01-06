@@ -26,7 +26,7 @@ const i18nLocaleSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-i18nLocaleSchema.index({ code: 1 });
+// i18nLocaleSchema.index({ code: 1 }); // Removed duplicate index
 i18nLocaleSchema.index({ enabled: 1 });
 i18nLocaleSchema.index({ isDefault: 1 });
 

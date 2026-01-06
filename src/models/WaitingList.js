@@ -27,7 +27,7 @@ const waitingListSchema = new mongoose.Schema({
   timestamps: true
 });
 
-waitingListSchema.index({ email: 1 });
+// waitingListSchema.index({ email: 1 }); // Removed duplicate index
 waitingListSchema.index({ type: 1 });
 waitingListSchema.index({ status: 1 });
 
