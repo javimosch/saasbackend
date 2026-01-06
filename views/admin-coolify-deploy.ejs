@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coolify Headless Deploy - SaaSBackend</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <style>
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 p-6">
+    <div id="app" v-cloak>
+        <div class="max-w-6xl mx-auto space-y-6">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <i class="ti ti-rocket text-blue-600"></i>
+                        Coolify Headless Deploy
+                    </h2>
+                    <p class="text-gray-600 mt-1">An opinionated way to deploy via SSH/rsync to remote servers supporting Traefik dynamic configs.</p>
+                </div>
+                <button 
+                    @click="provisionScript" 
+                    :disabled="loading.provisioning"
+                    class="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition font-semibold shadow-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                    <i v-if="loading.provisioning" class="ti ti-loader-2 animate-spin"></i>
+                    <i v-else class="ti ti-file-code"></i>
+                    Provision manage.sh
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Required Environment Variables -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-blue-500">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="ti ti-variable"></i>
+                        Required .env Variables
+                    </h3>
+                    <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-blue-400 overflow-x-auto relative group">
+                        <button @click="copyToClipboard(envTemplate)" class="absolute top-2 right-2 p-2 hover:bg-gray-800 rounded text-gray-400 opacity-0 group-hover:opacity-100 transition">
+                            <i class="ti ti-copy"></i>
+                        </button>
+                        <pre class="whitespace-pre text-xs">REMOTE_HOST_USER=root
+REMOTE_HOST=188.245.71.48
+REMOTE_HOST_PORT=22
+REMOTE_HOST_PATH=/apps/superlandings
+REMOTE_DOMAIN_HOST=188.245.71.48
+REMOTE_SERVICE_IP=http://superlandings:3000
+APP_NAME=superlandings
+REMOTE_SYNC_EXCLUDES=data
+REMOTE_DOMAIN_CONFIG_FILENAME=superlandings.yml</pre>
+                    </div>
+                    <ul class="mt-4 space-y-2 text-sm text-gray-600">
+                        <li class="flex gap-2">
+                            <span class="font-bold text-gray-900 min-w-[120px]">REMOTE_HOST:</span> 
+                            The IP address of your remote Coolify or Traefik server.
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="font-bold text-gray-900 min-w-[120px]">REMOTE_PATH:</span> 
+                            Target directory on the remote server.
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="font-bold text-gray-900 min-w-[120px]">SERVICE_IP:</span> 
+                            Internal container URL (e.g. http://app:3000).
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Usage & Commands -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 border-t-4 border-emerald-500">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="ti ti-terminal-2"></i>
+                        CLI Usage & Commands
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-700 mb-2">1. Deploy Application</p>
+                            <div class="bg-gray-100 p-2 rounded font-mono text-xs flex justify-between items-center">
+                                <code>./manage.sh deploy</code>
+                                <button @click="copyToClipboard('./manage.sh deploy')" class="p-1 hover:text-blue-600"><i class="ti ti-copy"></i></button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Syncs files via rsync and runs docker compose remotely.</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-700 mb-2">2. Setup Traefik Proxy</p>
+                            <div class="bg-gray-100 p-2 rounded font-mono text-xs flex justify-between items-center">
+                                <code>./manage.sh proxy</code>
+                                <button @click="copyToClipboard('./manage.sh proxy')" class="p-1 hover:text-blue-600"><i class="ti ti-copy"></i></button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Generates the Traefik YAML configuration file locally.</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-700 mb-2">3. Deploy Domain</p>
+                            <div class="bg-gray-100 p-2 rounded font-mono text-xs flex justify-between items-center">
+                                <code>./manage.sh domain</code>
+                                <button @click="copyToClipboard('./manage.sh domain')" class="p-1 hover:text-blue-600"><i class="ti ti-copy"></i></button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Uploads the Traefik YAML to the gateway server.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <p class="text-xs text-amber-800 flex items-center gap-2">
+                            <i class="ti ti-alert-triangle text-base"></i>
+                            <strong>Dependencies:</strong> Ensure <code>rsync</code> and <code>ssh</code> are installed locally and remotely.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div v-if="toast" class="fixed bottom-6 right-6 px-4 py-2 rounded-lg shadow-lg text-white transition-all duration-300" :class="toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'">
+            {{ toast.message }}
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+
+        createApp({
+            setup() {
+                const baseUrl = '<%= baseUrl %>';
+                const loading = ref({ provisioning: false });
+                const toast = ref(null);
+                const envTemplate = `REMOTE_HOST_USER=root
+REMOTE_HOST=188.245.71.48
+REMOTE_HOST_PORT=22
+REMOTE_HOST_PATH=/apps/superlandings
+REMOTE_DOMAIN_HOST=188.245.71.48
+REMOTE_SERVICE_IP=http://superlandings:3000
+APP_NAME=superlandings
+REMOTE_SYNC_EXCLUDES=data
+REMOTE_DOMAIN_CONFIG_FILENAME=superlandings.yml`;
+
+                const showToast = (message, type = 'success') => {
+                    toast.value = { message, type };
+                    setTimeout(() => { toast.value = null; }, 3000);
+                };
+
+                const provisionScript = async () => {
+                    loading.value.provisioning = true;
+                    try {
+                        const res = await fetch(baseUrl + '/api/admin/coolify-headless-deploy/provision', {
+                            method: 'POST'
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast(data.message);
+                        } else {
+                            showToast(data.error || 'Provisioning failed', 'error');
+                        }
+                    } catch (e) {
+                        showToast('Network error during provisioning', 'error');
+                    } finally {
+                        loading.value.provisioning = false;
+                    }
+                };
+
+                const copyToClipboard = (text) => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showToast('Copied to clipboard');
+                    });
+                };
+
+                return {
+                    baseUrl,
+                    loading,
+                    toast,
+                    envTemplate,
+                    provisionScript,
+                    copyToClipboard
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

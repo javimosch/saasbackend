@@ -13,6 +13,9 @@ router.patch('/users/:id', adminController.updateUserPassword);
 router.post('/users/:id/reconcile', adminController.reconcileUser);
 router.post('/generate-token', adminController.generateToken);
 
+// Coolify Headless Deploy
+router.post('/coolify-headless-deploy/provision', adminController.provisionCoolifyDeploy);
+
 // Webhook event routes
 router.get('/stripe-webhooks', adminController.getWebhookEvents);
 router.get('/stripe-webhooks/:id', adminController.getWebhookEvent);

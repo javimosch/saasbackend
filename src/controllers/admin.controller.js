@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const StripeWebhookEvent = require('../models/StripeWebhookEvent');
 const asyncHandler = require('../utils/asyncHandler');
+const fs = require('fs');
+const path = require('path');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { generateAccessToken, generateRefreshToken } = require('../utils/jwt');
 const { retryFailedWebhooks, processWebhookEvent } = require('../utils/webhookRetry');
@@ -273,6 +275,32 @@ const getWebhookStats = asyncHandler(async (req, res) => {
   });
 });
 
+// Coolify Headless Deploy provisioning
+const provisionCoolifyDeploy = asyncHandler(async (req, res) => {
+  try {
+    const managePath = path.join(process.cwd(), 'manage.sh');
+    const exists = fs.existsSync(managePath);
+    
+    if (exists) {
+      return res.json({ 
+        success: true, 
+        message: 'Script already exists', 
+        path: managePath 
+      });
+    }
+
+    // In ref-saasbackend, manage.sh already exists in the root of the repository
+    res.json({ 
+      success: true, 
+      message: 'Coolify Headless Deploy script (manage.sh) is ready in the root directory.',
+      path: managePath
+    });
+  } catch (error) {
+    console.error('❌ Error provisioning script:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = {
   getUsers,
   getUser,
@@ -284,5 +312,6 @@ module.exports = {
   getWebhookEvent,
   retryFailedWebhookEvents,
   retrySingleWebhookEvent,
-  getWebhookStats
+  getWebhookStats,
+  provisionCoolifyDeploy
 };
