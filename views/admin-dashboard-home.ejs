@@ -163,50 +163,52 @@
     function updateUI(data) {
       const { categories, recentActivity, timeSeries } = data;
 
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+      };
+
       // Update Health Badge
       const healthBadge = document.getElementById('system-health-badge');
-      const health = categories.monitoring.health;
-      const healthMeta = {
-        healthy: { cls: 'bg-green-100 text-green-700', icon: 'ti ti-heartbeat', label: 'Healthy' },
-        warning: { cls: 'bg-yellow-100 text-yellow-700', icon: 'ti ti-alert-triangle', label: 'Warnings present' },
-        critical: { cls: 'bg-red-100 text-red-700', icon: 'ti ti-flame', label: 'Critical issues' }
-      };
-      const meta = healthMeta[health] || healthMeta.healthy;
-      healthBadge.innerHTML = `<span class="status-badge ${meta.cls}" title="${meta.label}"><i class="${meta.icon}"></i></span>`;
+      if (healthBadge) {
+        const health = categories.monitoring.health;
+        const healthMeta = {
+          healthy: { cls: 'bg-green-100 text-green-700', icon: 'ti ti-heartbeat', label: 'Healthy' },
+          warning: { cls: 'bg-yellow-100 text-yellow-700', icon: 'ti ti-alert-triangle', label: 'Warnings present' },
+          critical: { cls: 'bg-red-100 text-red-700', icon: 'ti ti-flame', label: 'Critical issues' }
+        };
+        const meta = healthMeta[health] || healthMeta.healthy;
+        healthBadge.innerHTML = `<span class="status-badge ${meta.cls}" title="${meta.label}"><i class="${meta.icon}"></i></span>`;
+      }
 
       // Update Users
-      document.getElementById('users-total').innerText = categories.users.total;
-      document.getElementById('users-new').innerText = `+${categories.users.newToday} today`;
-      document.getElementById('users-orgs').innerText = categories.users.orgs;
-      document.getElementById('users-invites').innerText = categories.users.invites;
+      setVal('users-total', categories.users.total);
+      setVal('users-new', `+${categories.users.newToday} today`);
+      setVal('users-orgs', categories.users.orgs);
+      setVal('users-invites', categories.users.invites);
 
       // Update Monitoring
-      document.getElementById('mon-errors').innerText = categories.monitoring.errors;
-      document.getElementById('mon-audit').innerText = categories.monitoring.audit24h;
-      document.getElementById('mon-emails-sent').innerText = categories.monitoring.emailsSent;
-      document.getElementById('mon-emails-failed').innerText = categories.monitoring.emailsFailed;
+      setVal('mon-errors', categories.monitoring.errors);
+      setVal('mon-audit', categories.monitoring.audit24h);
+      setVal('mon-emails-sent', categories.monitoring.emailsSent);
+      setVal('mon-emails-failed', categories.monitoring.emailsFailed);
 
       // Update Content
-      document.getElementById('cont-assets').innerText = categories.content.assets;
-      document.getElementById('cont-ejs').innerText = categories.content.virtualEjs;
-          <div class="stat-card">
-            <span class="text-sm text-gray-500">Active Workflows</span>
-            <div class="flex items-end justify-between mt-2">
-              <h3 id="saas-workflows" class="text-2xl font-bold">-</h3>
-              <a href="#" onclick="parent.window.app.openTab({id:'workflows', label:'Workflows', path:'/admin/workflows/new', icon:'ti-robot'})" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition-colors uppercase font-bold">New</a>
-            </div>
-          </div>
-        </div>
-      </div>
+      setVal('cont-assets', categories.content.assets);
+      setVal('cont-ejs', categories.content.virtualEjs);
+      setVal('saas-workflows', categories.content.workflows || 0);
+
       const activityBody = document.getElementById('activity-list');
-      activityBody.innerHTML = recentActivity.map(event => `
-        <tr class="text-xs text-gray-700">
-          <td class="px-4 py-3"><span class="font-medium text-gray-900">${event.action}</span></td>
-          <td class="px-4 py-3">${event.actorEmail || 'System'}</td>
-          <td class="px-4 py-3 truncate max-w-[200px] text-gray-400">${event.resourceId || '-'}</td>
-          <td class="px-4 py-3 text-gray-400">${new Date(event.createdAt).toLocaleTimeString()}</td>
-        </tr>
-      `).join('');
+      if (activityBody) {
+        activityBody.innerHTML = recentActivity.map(event => `
+          <tr class="text-xs text-gray-700">
+            <td class="px-4 py-3"><span class="font-medium text-gray-900">${event.action}</span></td>
+            <td class="px-4 py-3">${event.actorEmail || 'System'}</td>
+            <td class="px-4 py-3 truncate max-w-[200px] text-gray-400">${event.resourceId || '-'}</td>
+            <td class="px-4 py-3 text-gray-400">${new Date(event.createdAt).toLocaleTimeString()}</td>
+          </tr>
+        `).join('');
+      }
 
       // Update Charts
       updateCharts(timeSeries);
