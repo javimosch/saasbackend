@@ -24,6 +24,8 @@ router.use((req, res, next) => {
 
 router.get('/', webhookController.getAll);
 router.post('/', webhookController.create);
+router.patch('/:id', webhookController.update);
+router.get('/:id/history', webhookController.getHistory);
 router.delete('/:id', webhookController.delete);
 router.post('/:id/test', webhookController.test);
 

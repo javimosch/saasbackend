@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const webhookSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    trim: true,
+    index: true,
+    default: () => `Webhook-${require('crypto').randomBytes(4).toString('hex')}`
+  },
   targetUrl: {
     type: String,
     required: true,
@@ -26,7 +32,7 @@ const webhookSchema = new mongoose.Schema({
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
-    required: true,
+    required: false,
     index: true
   },
   status: {
@@ -41,5 +47,7 @@ const webhookSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+webhookSchema.index({ name: 1, organizationId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Webhook', webhookSchema);

@@ -63,9 +63,41 @@ class WebhookService {
         webhook.status = 'active';
         await webhook.save();
       }
+
+      // Log success to audit
+      const AuditEvent = require('../models/AuditEvent');
+      await AuditEvent.create({
+        actorType: 'system',
+        actorId: 'webhook-service',
+        action: 'WEBHOOK_DELIVERY_SUCCESS',
+        entityType: 'Webhook',
+        entityId: webhook._id,
+        meta: {
+          event: payload.event,
+          targetUrl: webhook.targetUrl,
+          statusCode: 200,
+          payload
+        }
+      });
     } catch (error) {
       console.error(`Failed to deliver webhook to ${webhook.targetUrl}:`, error.message);
-      // Logic for tracking failures could be added here
+      
+      // Log failure to audit
+      const AuditEvent = require('../models/AuditEvent');
+      await AuditEvent.create({
+        actorType: 'system',
+        actorId: 'webhook-service',
+        action: 'WEBHOOK_DELIVERY_FAILURE',
+        entityType: 'Webhook',
+        entityId: webhook._id,
+        meta: {
+          event: payload.event,
+          targetUrl: webhook.targetUrl,
+          error: error.message,
+          statusCode: error.response?.status,
+          payload
+        }
+      });
     }
   }
 

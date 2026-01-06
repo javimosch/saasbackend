@@ -26,6 +26,7 @@
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Webhook Name</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Target URL</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Events</th>
             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
@@ -35,8 +36,12 @@
         <tbody class="divide-y divide-gray-200">
           <tr v-for="webhook in webhooks" :key="webhook._id" class="hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4">
-              <div class="text-sm font-medium text-gray-900 truncate max-w-xs">{{ webhook.targetUrl }}</div>
-              <div class="text-xs text-gray-400 font-mono mt-1">Secret: ••••••••••••••••</div>
+              <div class="text-sm font-bold text-gray-900">{{ webhook.name }}</div>
+              <div class="text-[10px] text-gray-400 font-mono mt-1">ID: {{ webhook._id }}</div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="text-xs font-medium text-gray-600 truncate max-w-xs">{{ webhook.targetUrl }}</div>
+              <div class="text-[10px] text-gray-400 font-mono mt-1">Secret: ••••••••••••••••</div>
             </td>
             <td class="px-6 py-4">
               <div class="flex flex-wrap gap-1">
@@ -53,6 +58,8 @@
               </span>
             </td>
             <td class="px-6 py-4 text-right space-x-3">
+              <button @click="viewHistory(webhook)" class="text-gray-600 hover:text-gray-900 text-sm font-medium">History</button>
+              <button @click="openEditModal(webhook)" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">Edit</button>
               <button @click="testWebhook(webhook._id)" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">Test</button>
               <button @click="deleteWebhook(webhook._id)" class="text-red-600 hover:text-red-900 text-sm font-medium">Delete</button>
             </td>
@@ -66,11 +73,75 @@
       </table>
     </div>
 
-    <!-- Create Modal -->
+    <!-- History Slide-over -->
+    <div v-if="selectedWebhook" class="fixed inset-0 overflow-hidden z-50">
+      <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="selectedWebhook = null"></div>
+        <div class="fixed inset-y-0 right-0 pl-10 max-w-full flex">
+          <div class="w-screen max-w-2xl">
+            <div class="h-full flex flex-col bg-white shadow-xl overflow-y-scroll">
+              <div class="px-4 py-6 bg-gray-50 sm:px-6">
+                <div class="flex items-start justify-between">
+                  <h2 class="text-lg font-medium text-gray-900">Delivery History</h2>
+                  <div class="ml-3 h-7 flex items-center">
+                    <button @click="selectedWebhook = null" class="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none">
+                      <i class="ti ti-x text-xl"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-1">
+                  <p class="text-sm text-gray-500 truncate">{{ selectedWebhook.targetUrl }}</p>
+                </div>
+              </div>
+              <div class="relative flex-1 px-4 sm:px-6 py-6">
+                <div v-if="loadingHistory" class="flex justify-center py-10">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+                <div v-else-if="history.length === 0" class="text-center py-10 text-gray-500 italic">
+                  No delivery attempts recorded yet.
+                </div>
+                <div v-else class="space-y-4">
+                  <div v-for="log in history" :key="log._id" class="border rounded-lg overflow-hidden">
+                    <div :class="['px-4 py-3 flex items-center justify-between', log.action === 'WEBHOOK_DELIVERY_SUCCESS' ? 'bg-green-50' : 'bg-red-50']">
+                      <div class="flex items-center gap-2">
+                        <i :class="['ti', log.action === 'WEBHOOK_DELIVERY_SUCCESS' ? 'ti-check text-green-600' : 'ti-alert-circle text-red-600']"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-700">{{ log.meta.event }}</span>
+                      </div>
+                      <span class="text-[10px] text-gray-500">{{ new Date(log.createdAt).toLocaleString() }}</span>
+                    </div>
+                    <div class="p-4 space-y-3">
+                      <div class="flex justify-between text-xs">
+                        <span class="text-gray-500">Status Code</span>
+                        <span :class="['font-mono font-bold', log.meta.statusCode >= 200 && log.meta.statusCode < 300 ? 'text-green-600' : 'text-red-600']">
+                          {{ log.meta.statusCode || 'ERROR' }}
+                        </span>
+                      </div>
+                      <div v-if="log.meta.error" class="text-xs text-red-600 bg-red-50 p-2 rounded">
+                        {{ log.meta.error }}
+                      </div>
+                      <div>
+                        <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-1">Payload</h4>
+                        <pre class="bg-gray-900 text-gray-100 p-3 rounded text-[10px] overflow-x-auto">{{ JSON.stringify(log.meta.payload, null, 2) }}</pre>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
     <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-6">
-        <h2 class="text-xl font-bold text-gray-900">Configure New Webhook</h2>
+        <h2 class="text-xl font-bold text-gray-900">{{ editingId ? 'Edit Webhook' : 'Configure New Webhook' }}</h2>
         <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Webhook Name (Optional)</label>
+            <input v-model="newWebhook.name" type="text" placeholder="e.g. My Zapier Feed" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Target URL</label>
             <input v-model="newWebhook.targetUrl" type="url" placeholder="https://api.yoursite.com/webhook" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -87,8 +158,8 @@
         </div>
         <div class="flex justify-end gap-3 pt-4">
           <button @click="showModal = false" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800">Cancel</button>
-          <button @click="createWebhook" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm">
-            Create Webhook
+          <button @click="saveWebhook" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm">
+            {{ editingId ? 'Update Webhook' : 'Create Webhook' }}
           </button>
         </div>
       </div>
@@ -108,6 +179,10 @@
         const webhooks = ref([]);
         const showModal = ref(false);
         const toast = ref(null);
+        const selectedWebhook = ref(null);
+        const history = ref([]);
+        const loadingHistory = ref(false);
+        const editingId = ref(null);
         const availableEvents = [
           'user.login',
           'user.registered',
@@ -118,6 +193,7 @@
         ];
 
         const newWebhook = ref({
+          name: '',
           targetUrl: '',
           events: []
         });
@@ -136,32 +212,64 @@
           }
         };
 
+        const viewHistory = async (webhook) => {
+          selectedWebhook.value = webhook;
+          loadingHistory.value = true;
+          history.value = [];
+          try {
+            const res = await fetch(`<%= baseUrl %>/api/webhooks/${webhook._id}/history`);
+            if (res.ok) {
+              history.value = await res.json();
+            } else {
+              showToast('Failed to load history', 'error');
+            }
+          } catch (e) {
+            showToast('Error loading history', 'error');
+          } finally {
+            loadingHistory.value = false;
+          }
+        };
+
         const openCreateModal = () => {
-          newWebhook.value = { targetUrl: '', events: [] };
+          editingId.value = null;
+          newWebhook.value = { name: '', targetUrl: '', events: [] };
           showModal.value = true;
         };
 
-        const createWebhook = async () => {
+        const openEditModal = (webhook) => {
+          editingId.value = webhook._id;
+          newWebhook.value = { 
+            name: webhook.name, 
+            targetUrl: webhook.targetUrl, 
+            events: [...webhook.events] 
+          };
+          showModal.value = true;
+        };
+
+        const saveWebhook = async () => {
           if (!newWebhook.value.targetUrl || newWebhook.value.events.length === 0) {
             showToast('Please provide a URL and select at least one event', 'error');
             return;
           }
           try {
-            const res = await fetch('<%= baseUrl %>/api/webhooks', {
-              method: 'POST',
+            const method = editingId.value ? 'PATCH' : 'POST';
+            const url = editingId.value ? `<%= baseUrl %>/api/webhooks/${editingId.value}` : '<%= baseUrl %>/api/webhooks';
+            
+            const res = await fetch(url, {
+              method,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(newWebhook.value)
             });
             if (res.ok) {
-              showToast('Webhook created successfully');
+              showToast(`Webhook ${editingId.value ? 'updated' : 'created'} successfully`);
               showModal.value = false;
               fetchWebhooks();
             } else {
               const err = await res.json();
-              showToast(err.error || 'Failed to create webhook', 'error');
+              showToast(err.error || 'Failed to save webhook', 'error');
             }
           } catch (e) {
-            showToast('Error creating webhook', 'error');
+            showToast('Error saving webhook', 'error');
           }
         };
 
@@ -195,7 +303,8 @@
 
         return {
           webhooks, showModal, toast, availableEvents, newWebhook,
-          openCreateModal, createWebhook, deleteWebhook, testWebhook
+          selectedWebhook, history, loadingHistory, editingId,
+          openCreateModal, openEditModal, saveWebhook, deleteWebhook, testWebhook, viewHistory
         };
       }
     }).mount('#app');
