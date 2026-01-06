@@ -32,7 +32,7 @@ const webhookController = {
   async create(req, res) {
     try {
       const organizationId = req.orgId || req.currentOrganization?._id || req.org?._id || req.body.organizationId || null;
-      const { name, targetUrl, events, metadata } = req.body;
+      const { name, targetUrl, events, metadata, timeout, isAsync } = req.body;
 
       const isBasicAuth = req.headers.authorization?.startsWith('Basic ');
 
@@ -101,6 +101,8 @@ const webhookController = {
       if (events && Array.isArray(events)) webhook.events = events;
       if (status) webhook.status = status;
       if (metadata) webhook.metadata = metadata;
+      if (timeout !== undefined) webhook.timeout = timeout;
+      if (isAsync !== undefined) webhook.isAsync = isAsync;
 
       await webhook.save();
       res.json(webhook);
