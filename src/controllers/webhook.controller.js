@@ -57,6 +57,8 @@ const webhookController = {
         targetUrl,
         events,
         organizationId,
+        timeout: timeout || 5000,
+        isAsync: isAsync === true,
         metadata: metadata || {}
       });
 
@@ -75,7 +77,7 @@ const webhookController = {
       const { id } = req.params;
       const organizationId = req.orgId || req.currentOrganization?._id || req.org?._id;
       const isBasicAuth = req.headers.authorization?.startsWith('Basic ');
-      const { name, targetUrl, events, status, metadata } = req.body;
+      const { name, targetUrl, events, status, metadata, timeout, isAsync } = req.body;
 
       const query = { _id: id };
       if (!isBasicAuth && organizationId) {

@@ -48,6 +48,40 @@ class WebhookService {
       .update(JSON.stringify(payload))
       .digest('hex');
 
+    const timeout = webhook.timeout || 5000;
+    const isAsync = webhook.isAsync || false;
+
+    if (isAsync) {
+      // Fire and forget
+      axios.post(webhook.targetUrl, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SaaS-Signature': signature,
+          'User-Agent': 'SaaSBackend-Webhook/1.0'
+        },
+        timeout: timeout
+      }).catch(err => {
+        console.error(`Async webhook delivery to ${webhook.targetUrl} failed:`, err.message);
+      });
+
+      // Log success immediately for async
+      const AuditEvent = require('../models/AuditEvent');
+      await AuditEvent.create({
+        actorType: 'system',
+        actorId: 'webhook-service',
+        action: 'WEBHOOK_DELIVERY_ASYNC_DISPATCHED',
+        entityType: 'Webhook',
+        entityId: webhook._id,
+        meta: {
+          event: payload.event,
+          targetUrl: webhook.targetUrl,
+          mode: 'async',
+          payload
+        }
+      });
+      return;
+    }
+
     try {
       await axios.post(webhook.targetUrl, payload, {
         headers: {
@@ -55,7 +89,7 @@ class WebhookService {
           'X-SaaS-Signature': signature,
           'User-Agent': 'SaaSBackend-Webhook/1.0'
         },
-        timeout: 5000 // 5 second timeout
+        timeout: timeout
       });
       
       // Reset status if it was previously failed/paused and now succeeds

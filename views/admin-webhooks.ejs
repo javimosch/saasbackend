@@ -146,6 +146,18 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Target URL</label>
             <input v-model="newWebhook.targetUrl" type="url" placeholder="https://api.yoursite.com/webhook" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
           </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Timeout (ms)</label>
+              <input v-model.number="newWebhook.timeout" type="number" step="500" min="1000" max="30000" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div class="flex items-center pt-6">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="newWebhook.isAsync" type="checkbox" class="rounded text-indigo-600">
+                <span class="text-sm font-medium text-gray-700">Async Delivery</span>
+              </label>
+            </div>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Events to Subscribe</label>
             <div class="grid grid-cols-2 gap-2">
@@ -195,7 +207,9 @@
         const newWebhook = ref({
           name: '',
           targetUrl: '',
-          events: []
+          events: [],
+          timeout: 5000,
+          isAsync: false
         });
 
         const showToast = (message, type = 'success') => {
@@ -232,7 +246,7 @@
 
         const openCreateModal = () => {
           editingId.value = null;
-          newWebhook.value = { name: '', targetUrl: '', events: [] };
+          newWebhook.value = { name: '', targetUrl: '', events: [], timeout: 5000, isAsync: false };
           showModal.value = true;
         };
 
@@ -241,7 +255,9 @@
           newWebhook.value = { 
             name: webhook.name, 
             targetUrl: webhook.targetUrl, 
-            events: [...webhook.events] 
+            events: [...webhook.events],
+            timeout: webhook.timeout || 5000,
+            isAsync: webhook.isAsync || false
           };
           showModal.value = true;
         };

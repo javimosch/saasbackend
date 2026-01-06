@@ -40,6 +40,16 @@ const webhookSchema = new mongoose.Schema({
     enum: ['active', 'paused', 'failed'],
     default: 'active'
   },
+  timeout: {
+    type: Number,
+    default: 5000, // 5 seconds default
+    min: 1000,
+    max: 30000 // 30 seconds max
+  },
+  isAsync: {
+    type: Boolean,
+    default: false
+  },
   metadata: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
