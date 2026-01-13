@@ -3,10 +3,52 @@ const express = require('express');
 const request = require('supertest');
 
 // Mock modules
-jest.mock('mongoose', () => ({
-  connection: { readyState: 0 },
-  connect: jest.fn().mockResolvedValue(true),
-}));
+jest.mock('mongoose', () => {
+  const mockSchema = jest.fn().mockImplementation((definition) => ({
+    definition,
+    paths: {},
+    methods: {},
+    statics: {},
+    index: jest.fn(),
+    set: jest.fn(),
+    pre: jest.fn(),
+    post: jest.fn(),
+    plugin: jest.fn()
+  }));
+
+  mockSchema.Types = {
+    Mixed: 'Mixed',
+    ObjectId: 'ObjectId',
+    String: 'String',
+    Number: 'Number',
+    Boolean: 'Boolean',
+    Date: 'Date',
+    Buffer: 'Buffer'
+  };
+
+  return {
+    connection: { readyState: 0 },
+    connect: jest.fn().mockResolvedValue(true),
+    Schema: mockSchema,
+    Types: {
+      Mixed: 'Mixed',
+      ObjectId: 'ObjectId',
+      String: 'String',
+      Number: 'Number',
+      Boolean: 'Boolean',
+      Date: 'Date',
+      Buffer: 'Buffer'
+    },
+    models: {},
+    model: jest.fn().mockReturnValue({
+      findOne: jest.fn(),
+      findById: jest.fn(),
+      find: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn()
+    })
+  };
+});
 
 jest.mock('./controllers/billing.controller', () => ({
   handleWebhook: jest.fn((req, res) => res.json({ received: true }))
@@ -17,6 +59,15 @@ jest.mock('./middleware/auth', () => ({
 }));
 
 jest.mock('fs', () => ({
+  readFileSync: jest.fn((path) => {
+    if (path.includes('admin-test.ejs')) {
+      return '<html><body>Test Page: <%= baseUrl %></body></html>';
+    } else if (path.includes('admin-global-settings.ejs')) {
+      return '<html><body>Settings Page: <%= baseUrl %></body></html>';
+    } else {
+      throw new Error('File not found');
+    }
+  }),
   readFile: jest.fn((path, encoding, callback) => {
     if (path.includes('admin-test.ejs')) {
       callback(null, '<html><body>Test Page: <%= baseUrl %></body></html>');
@@ -26,6 +77,13 @@ jest.mock('fs', () => ({
       callback(new Error('File not found'));
     }
   })
+}));
+
+jest.mock('vm2', () => ({
+  NodeVM: jest.fn().mockImplementation(() => ({
+    run: jest.fn().mockResolvedValue({}),
+    call: jest.fn().mockResolvedValue({})
+  }))
 }));
 
 // Mock all route modules
@@ -77,6 +135,95 @@ jest.mock('./routes/user.routes', () => {
   router.get('/test', (req, res) => res.json({ route: 'user' }));
   return router;
 });
+
+jest.mock('./routes/workflows.routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.get('/test', (req, res) => res.json({ route: 'workflows' }));
+  return router;
+});
+
+jest.mock('./services/workflow.service', () => ({
+  executeWorkflow: jest.fn().mockResolvedValue({ success: true }),
+  createWorkflow: jest.fn().mockResolvedValue({ id: 'workflow123' }),
+  getWorkflow: jest.fn().mockResolvedValue({ id: 'workflow123', name: 'Test Workflow' })
+}));
+
+jest.mock('./models/WorkflowExecution', () => ({
+  find: jest.fn().mockReturnValue({
+    sort: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue([])
+  }),
+  findById: jest.fn().mockResolvedValue(null),
+  create: jest.fn().mockResolvedValue({ id: 'exec123' })
+}));
+
+jest.mock('./routes/featureFlags.routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.get('/test', (req, res) => res.json({ route: 'featureFlags' }));
+  return router;
+});
+
+jest.mock('./controllers/featureFlags.controller', () => ({
+  getPublicFlags: jest.fn((req, res) => res.json({ flags: {} })),
+  getEvaluatedFlags: jest.fn((req, res) => res.json({ flags: {} }))
+}));
+
+jest.mock('./routes/assets.routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.get('/test', (req, res) => res.json({ route: 'assets' }));
+  return router;
+});
+
+jest.mock('./controllers/assets.controller', () => ({
+  upload: jest.fn((req, res) => res.json({ message: 'Asset uploaded' })),
+  list: jest.fn((req, res) => res.json({ assets: [] })),
+  get: jest.fn((req, res) => res.json({ asset: {} })),
+  download: jest.fn((req, res) => res.download('test.pdf'))
+}));
+
+jest.mock('multer', () => ({
+  single: jest.fn(() => (req, res, next) => next()),
+  memoryStorage: jest.fn(() => ({}))
+}));
+
+jest.mock('./services/auditLogger', () => ({
+  auditMiddleware: jest.fn(() => (req, res, next) => next())
+}));
+
+jest.mock('./routes/adminAssets.routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.get('/test', (req, res) => res.json({ route: 'adminAssets' }));
+  return router;
+});
+
+jest.mock('./controllers/adminAssets.controller', () => ({
+  uploadAsset: jest.fn((req, res) => res.json({ message: 'Asset uploaded' })),
+  getAssets: jest.fn((req, res) => res.json({ assets: [] })),
+  getAsset: jest.fn((req, res) => res.json({ asset: {} })),
+  deleteAsset: jest.fn((req, res) => res.json({ message: 'Asset deleted' }))
+}));
+
+jest.mock('./routes/org.routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.get('/test', (req, res) => res.json({ route: 'org' }));
+  return router;
+});
+
+jest.mock('./controllers/org.controller', () => ({
+  listPublicOrgs: jest.fn((req, res) => res.json({ orgs: [] })),
+  listOrgs: jest.fn((req, res) => res.json({ orgs: [] })),
+  createOrg: jest.fn((req, res) => res.json({ org: {} })),
+  getOrgPublic: jest.fn((req, res) => res.json({ org: {} })),
+  getOrg: jest.fn((req, res) => res.json({ org: {} })),
+  updateOrg: jest.fn((req, res) => res.json({ org: {} })),
+  deleteOrg: jest.fn((req, res) => res.json({ message: 'Org deleted' }))
+}));
 
 describe('Middleware', () => {
   let app;
