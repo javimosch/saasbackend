@@ -17,6 +17,17 @@ jest.mock('../models/User', () => ({
   findById: jest.fn()
 }));
 
+// Mock stripeHelper service
+jest.mock('./stripeHelper.service', () => ({
+  getStripeClient: jest.fn(),
+  resolvePlanKeyFromPriceId: jest.fn()
+}));
+
+// Mock StripeCatalogItem model
+jest.mock('../models/StripeCatalogItem', () => ({
+  findOne: jest.fn()
+}));
+
 describe('StripeService', () => {
   let mockStripe;
   let mockUser;
@@ -27,6 +38,15 @@ describe('StripeService', () => {
     // Get the mocked stripe instance
     const stripe = require('stripe');
     mockStripe = stripe();
+    
+    // Mock stripeHelper service
+    const stripeHelper = require('./stripeHelper.service');
+    stripeHelper.getStripeClient.mockResolvedValue(mockStripe);
+    stripeHelper.resolvePlanKeyFromPriceId.mockImplementation((priceId) => {
+      if (priceId === 'price_creator') return 'creator';
+      if (priceId === 'price_pro') return 'pro';
+      return 'creator'; // default for unknown price
+    });
     
     mockUser = {
       _id: 'user123',
