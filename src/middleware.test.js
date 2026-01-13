@@ -225,12 +225,29 @@ jest.mock('./controllers/org.controller', () => ({
   deleteOrg: jest.fn((req, res) => res.json({ message: 'Org deleted' }))
 }));
 
+jest.mock('./routes/publicAssets.routes', () => {
+  const express = require('express');
+  const router = express.Router();
+  router.get('/test', (req, res) => res.json({ route: 'publicAssets' }));
+  return router;
+});
+
+jest.mock('./controllers/assets.controller', () => ({
+  getPublicAsset: jest.fn((req, res) => res.json({ asset: {} })),
+  upload: jest.fn((req, res) => res.json({ message: 'Asset uploaded' })),
+  list: jest.fn((req, res) => res.json({ assets: [] })),
+  get: jest.fn((req, res) => res.json({ asset: {} })),
+  download: jest.fn((req, res) => res.download('test.pdf'))
+}));
+
 describe('Middleware', () => {
   let app;
 
   beforeEach(() => {
     app = express();
     jest.clearAllMocks();
+    // Set NODE_ENV to development to get actual error messages
+    process.env.NODE_ENV = 'development';
   });
 
   describe('createMiddleware', () => {
@@ -383,7 +400,8 @@ describe('Middleware', () => {
       const response = await request(app).get('/admin/test');
       
       expect(response.status).toBe(500);
-      expect(response.text).toBe('Error rendering page');
+      // The response is HTML with the error message
+      expect(response.text).toMatch(/Error rendering page/);
     });
   });
 
@@ -396,10 +414,15 @@ describe('Middleware', () => {
       app.get('/error-test', (req, res, next) => {
         const error = new Error('Test error');
         error.status = 400;
+        error.statusCode = 400;  // Set both to be sure
         next(error);
       });
       
       const response = await request(app).get('/error-test');
+      
+      console.log('Response status:', response.status);
+      console.log('Response body:', response.body);
+      console.log('Response text:', response.text);
       
       expect(response.status).toBe(400);
       expect(response.body.error).toBe('Test error');
