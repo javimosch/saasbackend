@@ -33,17 +33,17 @@
       <div class="bg-white rounded-lg shadow">
         <div class="border-b border-gray-200">
           <nav class="-mb-px flex gap-6 px-6" aria-label="Tabs">
+            <button data-tab="models" class="tab-btn border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Models</button>
             <button data-tab="collections" class="tab-btn border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Collections</button>
-            <button data-tab="data" class="tab-btn border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Data</button>
-            <button data-tab="api" class="tab-btn border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">API</button>
+            <button data-tab="apis" class="tab-btn border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Collections APIs</button>
           </nav>
         </div>
 
-        <div id="tab-collections" class="p-6">
+        <div id="tab-models" class="p-6">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1">
               <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold">Collections</h2>
+                <h2 class="text-lg font-semibold">Models</h2>
                 <button id="btn-new-model" class="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 text-sm">New</button>
               </div>
               <div id="models-list" class="space-y-2">
@@ -54,7 +54,7 @@
             <div class="lg:col-span-2">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                 <div>
-                  <div class="text-sm text-gray-500">Selected collection</div>
+                  <div class="text-sm text-gray-500">Selected model</div>
                   <div id="selected-model-title" class="text-xl font-semibold">None</div>
                 </div>
                 <div class="flex gap-2">
@@ -96,7 +96,7 @@
                         </tr>
                       </thead>
                       <tbody id="fields-tbody">
-                        <tr><td class="py-3 text-gray-500" colspan="7">Select a collection</td></tr>
+                        <tr><td class="py-3 text-gray-500" colspan="7">Select a model</td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -108,7 +108,7 @@
           </div>
         </div>
 
-        <div id="tab-data" class="p-6 hidden">
+        <div id="tab-collections" class="p-6 hidden">
           <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div class="lg:col-span-1">
               <div class="flex items-center justify-between mb-3">
@@ -155,7 +155,7 @@
           </div>
         </div>
 
-        <div id="tab-api" class="p-6 hidden">
+        <div id="tab-apis" class="p-6 hidden">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-gray-50 border border-gray-200 rounded p-4">
               <div class="flex items-center justify-between mb-3">
@@ -168,9 +168,65 @@
             </div>
 
             <div class="bg-gray-50 border border-gray-200 rounded p-4">
-              <h2 class="text-lg font-semibold mb-3">cURL examples</h2>
-              <div class="text-sm text-gray-600 mb-2">Use <span class="mono">Authorization: Bearer</span> or <span class="mono">X-API-Token</span>:</div>
-              <pre class="mono text-xs bg-white border rounded p-3 overflow-x-auto" id="curl-examples"></pre>
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold">cURL examples</h2>
+                <div class="text-xs text-gray-500" id="curl-selected-token"></div>
+              </div>
+              <div class="text-sm text-gray-600 mb-4">Use <span class="mono">Authorization: Bearer</span> or <span class="mono">X-API-Token</span>:</div>
+              <div class="space-y-4" id="curl-blocks">
+                <!-- List -->
+                <div class="bg-white border rounded p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="font-medium text-sm">List</div>
+                    <button type="button" class="btn-copy-curl text-gray-500 hover:text-gray-800" data-op="list" title="Copy command">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <pre class="mono text-xs overflow-x-auto" id="curl-list"></pre>
+                </div>
+                <!-- Create -->
+                <div class="bg-white border rounded p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="font-medium text-sm">Create</div>
+                    <button type="button" class="btn-copy-curl text-gray-500 hover:text-gray-800" data-op="create" title="Copy command">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <pre class="mono text-xs overflow-x-auto" id="curl-create"></pre>
+                </div>
+                <!-- Update -->
+                <div class="bg-white border rounded p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="font-medium text-sm">Update</div>
+                    <button type="button" class="btn-copy-curl text-gray-500 hover:text-gray-800" data-op="update" title="Copy command">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <pre class="mono text-xs overflow-x-auto" id="curl-update"></pre>
+                </div>
+                <!-- Delete -->
+                <div class="bg-white border rounded p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="font-medium text-sm">Delete</div>
+                    <button type="button" class="btn-copy-curl text-gray-500 hover:text-gray-800" data-op="delete" title="Copy command">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <pre class="mono text-xs overflow-x-auto" id="curl-delete"></pre>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -218,8 +274,10 @@
   const baseUrl = '<%= baseUrl %>';
   const adminPath = '<%= adminPath %>';
 
+  const TOKEN_CACHE_KEY = 'headlessCmsApiTokenCache';
+
   let state = {
-    activeTab: 'collections',
+    activeTab: 'models',
     models: [],
     selectedModel: null,
     data: { items: [], total: 0 },
@@ -228,6 +286,10 @@
       limit: 25,
       skip: 0,
       filterRaw: '',
+    },
+    apiUi: {
+      selectedTokenId: null,
+      selectedTokenValue: null,
     },
     tokens: [],
     permissionsDraft: [],
@@ -244,6 +306,57 @@
       el.classList.add('fade-out');
       setTimeout(() => el.remove(), 350);
     }, 2500);
+  }
+
+  function loadTokenCache() {
+    try {
+      const raw = localStorage.getItem(TOKEN_CACHE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveTokenCache(cache) {
+    try {
+      localStorage.setItem(TOKEN_CACHE_KEY, JSON.stringify(cache || {}));
+    } catch {
+      // ignore
+    }
+  }
+
+  function cacheTokenValue(tokenId, tokenValue) {
+    if (!tokenId || !tokenValue) return;
+    const cache = loadTokenCache();
+    cache[String(tokenId)] = String(tokenValue);
+    saveTokenCache(cache);
+  }
+
+  function getCachedTokenValue(tokenId) {
+    const cache = loadTokenCache();
+    return cache[String(tokenId)] || null;
+  }
+
+  async function copyToClipboard(text) {
+    const value = String(text || '');
+    if (!value) return false;
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        return true;
+      } catch {
+        return false;
+      }
+    }
   }
 
   function renderDataModelsList() {
@@ -268,9 +381,9 @@
 
   function setTab(tab) {
     state.activeTab = tab;
+    document.getElementById('tab-models').classList.toggle('hidden', tab !== 'models');
     document.getElementById('tab-collections').classList.toggle('hidden', tab !== 'collections');
-    document.getElementById('tab-data').classList.toggle('hidden', tab !== 'data');
-    document.getElementById('tab-api').classList.toggle('hidden', tab !== 'api');
+    document.getElementById('tab-apis').classList.toggle('hidden', tab !== 'apis');
 
     document.querySelectorAll('.tab-btn').forEach((b) => {
       const isActive = b.dataset.tab === tab;
@@ -280,13 +393,14 @@
       b.classList.toggle('text-gray-600', !isActive);
     });
 
-    if (tab === 'api') {
+    if (tab === 'apis') {
       renderCurlExamples();
+      renderSelectedTokenLabel();
       loadTokens();
       loadModels();
     }
 
-    if (tab === 'data') {
+    if (tab === 'collections') {
       loadModels();
       renderDataModelsList();
       renderDataSelectedHeader();
@@ -312,7 +426,7 @@
     list.innerHTML = '';
 
     if (!state.models.length) {
-      list.innerHTML = '<div class="text-gray-500 text-sm">No tables yet</div>';
+      list.innerHTML = '<div class="text-gray-500 text-sm">No models yet</div>';
       return;
     }
 
@@ -530,7 +644,7 @@
       let res;
       if (m.__isNew) {
         res = await api('/api/admin/headless/models', { method: 'POST', body: JSON.stringify(payload) });
-        toast('Table created', 'success');
+        toast('Model created', 'success');
         state.selectedModel = null;
         await loadModels();
         await selectModel(res.item.codeIdentifier);
@@ -552,7 +666,7 @@
       const m = state.selectedModel;
       if (!m || m.__isNew) return;
       await api(`/api/admin/headless/models/${encodeURIComponent(m.codeIdentifier)}`, { method: 'DELETE' });
-      toast('Table disabled', 'success');
+      toast('Model disabled', 'success');
       state.selectedModel = null;
       renderSelectedModel();
       await loadModels();
@@ -806,29 +920,99 @@
     }
 
     state.tokens.forEach((t) => {
-      const el = document.createElement('div');
-      el.className = 'bg-white border border-gray-200 rounded p-3';
+      const card = document.createElement('button');
+      const isSelected = state.apiUi.selectedTokenId === t._id;
+      card.type = 'button';
+      card.className = `w-full text-left bg-white border rounded p-3 ${isSelected ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`;
+
       const exp = t.expiresAt ? new Date(t.expiresAt).toISOString() : 'never';
-      el.innerHTML = `
-        <div class="flex items-center justify-between">
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-3">
           <div>
             <div class="font-medium">${t.name}</div>
             <div class="text-xs text-gray-500">expires: <span class="mono">${exp}</span></div>
           </div>
-          <button class="btn-del-token text-red-600 hover:underline" data-id="${t._id}">Delete</button>
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn-copy-token bg-white border border-gray-200 rounded px-2 py-2 hover:bg-gray-100" title="Copy token" data-id="${t._id}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+            <button type="button" class="btn-del-token bg-white border border-gray-200 rounded px-2 py-2 hover:bg-gray-100 text-red-600" title="Delete token" data-id="${t._id}" data-name="${(t.name || '').replace(/"/g,'&quot;')}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+              </svg>
+            </button>
+          </div>
         </div>
       `;
-      list.appendChild(el);
+
+      card.addEventListener('click', async () => {
+        const tokenValue = getCachedTokenValue(t._id);
+        state.apiUi.selectedTokenId = t._id;
+        state.apiUi.selectedTokenValue = tokenValue;
+
+        if (!tokenValue) {
+          const provided = window.prompt('Paste this API token to use it in cURL examples (stored in this browser only):');
+          if (provided && String(provided).trim()) {
+            cacheTokenValue(t._id, String(provided).trim());
+            state.apiUi.selectedTokenValue = String(provided).trim();
+          }
+        }
+
+        renderTokens();
+        renderSelectedTokenLabel();
+        renderCurlExamples();
+      });
+
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll('.btn-copy-token').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        let tokenValue = getCachedTokenValue(id);
+        if (!tokenValue) {
+          const provided = window.prompt('Paste this API token to store it in this browser and copy it:');
+          if (provided && String(provided).trim()) {
+            tokenValue = String(provided).trim();
+            cacheTokenValue(id, tokenValue);
+          }
+        }
+        if (!tokenValue) return;
+        const ok = await copyToClipboard(tokenValue);
+        toast(ok ? 'Token copied' : 'Failed to copy', ok ? 'success' : 'error');
+      });
     });
 
     list.querySelectorAll('.btn-del-token').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const name = btn.dataset.name || 'this token';
+        const ok = window.confirm(`Delete token "${name}"? This cannot be undone.`);
+        if (!ok) return;
+
         try {
-          await api(`/api/admin/headless/tokens/${encodeURIComponent(btn.dataset.id)}`, { method: 'DELETE' });
+          await api(`/api/admin/headless/tokens/${encodeURIComponent(id)}`, { method: 'DELETE' });
           toast('Token deleted', 'success');
+          if (state.apiUi.selectedTokenId === id) {
+            state.apiUi.selectedTokenId = null;
+            state.apiUi.selectedTokenValue = null;
+            renderSelectedTokenLabel();
+            renderCurlExamples();
+          }
           await loadTokens();
-        } catch (e) {
-          toast(e.message, 'error');
+        } catch (e2) {
+          toast(e2.message, 'error');
         }
       });
     });
@@ -868,9 +1052,9 @@
       el.innerHTML = `
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div class="flex-1">
-            <div class="text-xs text-gray-500 mb-1">Table</div>
+            <div class="text-xs text-gray-500 mb-1">Model</div>
             <select class="perm-model border rounded px-2 py-2 w-full" data-idx="${idx}">
-              <option value="">Select table…</option>
+              <option value="">Select model…</option>
               ${modelOptions}
             </select>
           </div>
@@ -918,10 +1102,31 @@
   }
 
   function renderCurlExamples() {
-    const el = document.getElementById('curl-examples');
     const model = state.selectedModel ? state.selectedModel.codeIdentifier : 'your_model_code';
+    const tokenInline = state.apiUi.selectedTokenValue ? state.apiUi.selectedTokenValue : '${API_TOKEN}';
 
-    el.textContent = `# List\ncurl -s \"${baseUrl}/api/headless/${model}?limit=10&skip=0\" \\\n  -H \"Authorization: Bearer \${API_TOKEN}\"\n\n# Create\ncurl -s -X POST \"${baseUrl}/api/headless/${model}\" \\\n  -H \"Authorization: Bearer \${API_TOKEN}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{"name":"example"}'\n\n# Update\ncurl -s -X PUT \"${baseUrl}/api/headless/${model}/\${ID}\" \\\n  -H \"X-API-Token: \${API_TOKEN}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{"name":"changed"}'\n\n# Delete\ncurl -s -X DELETE \"${baseUrl}/api/headless/${model}/\${ID}\" \\\n  -H \"X-API-Token: \${API_TOKEN}\"`;
+    const commands = {
+      list: `curl -s \"${baseUrl}/api/headless/${model}?limit=10&skip=0\" \\\n  -H \"Authorization: Bearer ${tokenInline}\"`,
+      create: `curl -s -X POST \"${baseUrl}/api/headless/${model}\" \\\n  -H \"Authorization: Bearer ${tokenInline}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"example\"}'`,
+      update: `curl -s -X PUT \"${baseUrl}/api/headless/${model}/\${ID}\" \\\n  -H \"X-API-Token: ${tokenInline}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"changed\"}'`,
+      delete: `curl -s -X DELETE \"${baseUrl}/api/headless/${model}/\${ID}\" \\\n  -H \"X-API-Token: ${tokenInline}\"`,
+    };
+
+    Object.keys(commands).forEach(op => {
+      const el = document.getElementById(`curl-${op}`);
+      if (el) el.textContent = commands[op];
+    });
+  }
+
+  function renderSelectedTokenLabel() {
+    const el = document.getElementById('curl-selected-token');
+    if (!el) return;
+    if (!state.apiUi.selectedTokenId) {
+      el.textContent = '';
+      return;
+    }
+    const token = state.apiUi.selectedTokenValue;
+    el.textContent = token ? 'token selected' : 'token not stored in this browser';
   }
 
   async function createToken() {
@@ -934,15 +1139,23 @@
       const payload = { name, permissions };
       if (ttlSeconds) payload.ttlSeconds = Number(ttlSeconds);
 
-      const { token } = await api('/api/admin/headless/tokens', {
+      const { token, item } = await api('/api/admin/headless/tokens', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+
+      if (item && item._id && token) {
+        cacheTokenValue(item._id, token);
+        state.apiUi.selectedTokenId = item._id;
+        state.apiUi.selectedTokenValue = token;
+      }
 
       document.getElementById('created-token').classList.remove('hidden');
       document.getElementById('created-token-value').textContent = token;
       toast('Token created', 'success');
       await loadTokens();
+      renderSelectedTokenLabel();
+      renderCurlExamples();
     } catch (e) {
       toast(e.message, 'error');
     }
@@ -955,12 +1168,48 @@
     await loadTokens();
   });
 
+  // Copy cURL buttons
+  function setupCurlCopyButtons() {
+    document.querySelectorAll('.btn-copy-curl').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const op = btn.dataset.op;
+        const el = document.getElementById(`curl-${op}`);
+        if (!el) return;
+        const ok = await copyToClipboard(el.textContent);
+        toast(ok ? 'cURL copied' : 'Failed to copy', ok ? 'success' : 'error');
+      });
+    });
+  }
+
+  // Init
+  setTab('models');
+  const originalLoadModels = loadModels;
+  loadModels = async function() {
+    await originalLoadModels();
+    renderDataModelsList();
+    renderDataSelectedHeader();
+  };
+  loadModels();
+
+  // Ensure copy handlers are attached after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupCurlCopyButtons);
+  } else {
+    setupCurlCopyButtons();
+  }
+
+  // If apis tab is active on load, ensure tokens are loaded
+  if (state.activeTab === 'apis') {
+    loadTokens();
+  }
+
   document.getElementById('btn-new-model').addEventListener('click', () => {
     state.selectedModel = {
       __isNew: true,
       codeIdentifier: '',
       displayName: '',
       fields: [],
+      permissions: []
     };
     renderSelectedModel();
     document.getElementById('fields-tbody').innerHTML = '<tr><td class="py-3 text-gray-500" colspan="7">No fields yet</td></tr>';
@@ -1031,16 +1280,6 @@
     state.permissionsDraft = [];
     renderPermissionsDraft();
   });
-
-  // Init
-  setTab('collections');
-  const originalLoadModels = loadModels;
-  loadModels = async function() {
-    await originalLoadModels();
-    renderDataModelsList();
-    renderDataSelectedHeader();
-  };
-  loadModels();
 
 </script>
 </body>
