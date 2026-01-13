@@ -78,7 +78,7 @@
     <%- include('partials/dashboard/nav-items') %>
 
     <script>
-        const { createApp, ref, computed, nextTick, onMounted, onUnmounted } = Vue;
+        const { createApp, ref, computed, nextTick, onMounted, onUnmounted, watch } = Vue;
 
         createApp({
             setup() {
@@ -89,6 +89,133 @@
                 // Tabs state
                 const tabs = ref([]);
                 const activeTabId = ref(null);
+
+                // localStorage utilities
+                const STORAGE_KEY = 'adminDashboardTabs';
+                
+                const saveTabsToStorage = () => {
+                    try {
+                        const data = {
+                            tabs: tabs.value,
+                            activeTabId: activeTabId.value
+                        };
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                    } catch (error) {
+                        console.warn('Failed to save tabs to localStorage:', error);
+                    }
+                    // Always save to URL as fallback
+                    saveTabsToURL();
+                };
+                
+                const loadTabsFromStorage = () => {
+                    // Try localStorage first
+                    try {
+                        const stored = localStorage.getItem(STORAGE_KEY);
+                        if (stored) {
+                            const data = JSON.parse(stored);
+                            if (data && Array.isArray(data.tabs)) {
+                                // Validate tabs have required fields
+                                const validTabs = data.tabs.filter(tab => 
+                                    tab && 
+                                    typeof tab.id === 'string' && 
+                                    typeof tab.label === 'string' && 
+                                    typeof tab.path === 'string'
+                                );
+                                
+                                // Ensure tabs still exist in available modules
+                                const availableModuleIds = allModules.value.map(m => m.id);
+                                const existingTabs = validTabs.filter(tab => 
+                                    availableModuleIds.includes(tab.id)
+                                );
+                                
+                                if (existingTabs.length > 0) {
+                                    return {
+                                        tabs: existingTabs,
+                                        activeTabId: existingTabs.some(t => t.id === data.activeTabId) 
+                                            ? data.activeTabId 
+                                            : (existingTabs.length > 0 ? existingTabs[0].id : null)
+                                    };
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('Failed to load tabs from localStorage:', error);
+                    }
+                    
+                    // Fallback to URL parameters
+                    return loadTabsFromURL();
+                };
+
+                // URL utilities for fallback persistence
+                let urlUpdateTimeout = null;
+                
+                const saveTabsToURL = () => {
+                    clearTimeout(urlUpdateTimeout);
+                    urlUpdateTimeout = setTimeout(() => {
+                        try {
+                            const url = new URL(window.location);
+                            
+                            if (tabs.value.length > 0) {
+                                const tabIds = tabs.value.map(t => t.id).join(',');
+                                url.searchParams.set('openTabs', tabIds);
+                                if (activeTabId.value) {
+                                    url.searchParams.set('activeTab', activeTabId.value);
+                                }
+                            } else {
+                                url.searchParams.delete('openTabs');
+                                url.searchParams.delete('activeTab');
+                            }
+                            
+                            // Update URL without page reload
+                            window.history.replaceState({}, '', url);
+                        } catch (error) {
+                            console.warn('Failed to save tabs to URL:', error);
+                        }
+                    }, 300); // Debounce URL updates
+                };
+                
+                const loadTabsFromURL = () => {
+                    try {
+                        const url = new URL(window.location);
+                        const openTabsParam = url.searchParams.get('openTabs');
+                        const activeTabParam = url.searchParams.get('activeTab');
+                        
+                        if (!openTabsParam) return null;
+                        
+                        // Parse comma-separated tab IDs
+                        const tabIds = openTabsParam.split(',').filter(id => id.trim());
+                        if (tabIds.length === 0) return null;
+                        
+                        // Get available modules
+                        const availableModules = allModules.value;
+                        
+                        // Reconstruct full tab objects from IDs
+                        const tabs = tabIds.map(id => {
+                            const module = availableModules.find(m => m.id === id);
+                            if (module) {
+                                return {
+                                    id: module.id,
+                                    label: module.label,
+                                    icon: module.icon,
+                                    path: module.path
+                                };
+                            }
+                            return null;
+                        }).filter(tab => tab !== null);
+                        
+                        if (tabs.length === 0) return null;
+                        
+                        return {
+                            tabs,
+                            activeTabId: tabs.some(t => t.id === activeTabParam) 
+                                ? activeTabParam 
+                                : tabs[0].id
+                        };
+                    } catch (error) {
+                        console.warn('Failed to load tabs from URL:', error);
+                        return null;
+                    }
+                };
 
                 // Palette state
                 const showPalette = ref(false);
@@ -137,6 +264,7 @@
                         });
                     }
                     activeTabId.value = item.id;
+                    saveTabsToStorage();
                     closePalette();
                 };
 
@@ -153,6 +281,7 @@
                     } else if (tabs.value.length === 0) {
                         activeTabId.value = null;
                     }
+                    saveTabsToStorage();
                 };
 
                 // Palette methods
@@ -209,11 +338,24 @@
                 onMounted(() => {
                     window.addEventListener('keydown', handleKeydown);
                     window.addEventListener('message', handleMessage);
-                    // Open default tab
-                    if (allModules.value.length > 0) {
-                        const defaultModule = allModules.value.find(m => m.id === 'overview') || allModules.value[0];
-                        if (defaultModule) openTab(defaultModule);
+                    
+                    // Load saved tabs from localStorage
+                    const savedState = loadTabsFromStorage();
+                    if (savedState && savedState.tabs.length > 0) {
+                        tabs.value = savedState.tabs;
+                        activeTabId.value = savedState.activeTabId;
+                    } else {
+                        // Open default tab if no saved state
+                        if (allModules.value.length > 0) {
+                            const defaultModule = allModules.value.find(m => m.id === 'overview') || allModules.value[0];
+                            if (defaultModule) openTab(defaultModule);
+                        }
                     }
+                });
+
+                // Watch for activeTabId changes (when user clicks on tabs)
+                watch(activeTabId, () => {
+                    saveTabsToStorage();
                 });
 
                 onUnmounted(() => {
