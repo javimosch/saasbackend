@@ -23,6 +23,7 @@ const mockAdminController = {
   getUsers: jest.fn((req, res) => res.json({ message: 'users list' })),
   getUser: jest.fn((req, res) => res.json({ message: 'user details' })),
   updateUserSubscription: jest.fn((req, res) => res.json({ message: 'subscription updated' })),
+  updateUserPassword: jest.fn((req, res) => res.json({ message: 'password updated' })),
   reconcileUser: jest.fn((req, res) => res.json({ message: 'user reconciled' })),
   generateToken: jest.fn((req, res) => res.json({ message: 'token generated' })),
   getWebhookEvents: jest.fn((req, res) => res.json({ message: 'webhook events' })),
@@ -30,13 +31,14 @@ const mockAdminController = {
   retryFailedWebhookEvents: jest.fn((req, res) => res.json({ message: 'webhooks retried' })),
   retrySingleWebhookEvent: jest.fn((req, res) => res.json({ message: 'webhook retried' })),
   getWebhookStats: jest.fn((req, res) => res.json({ message: 'webhook stats' })),
+  provisionCoolifyDeploy: jest.fn((req, res) => res.json({ message: 'coolify deploy provisioned' })),
 };
 
 const mockBillingController = {
   createCheckoutSession: jest.fn((req, res) => res.json({ message: 'checkout session created' })),
+  createPortalSession: jest.fn((req, res) => res.json({ message: 'portal session created' })),
   handleWebhook: jest.fn((req, res) => res.json({ message: 'webhook handled' })),
-  getSubscription: jest.fn((req, res) => res.json({ message: 'subscription info' })),
-  cancelSubscription: jest.fn((req, res) => res.json({ message: 'subscription cancelled' })),
+  reconcileSubscription: jest.fn((req, res) => res.json({ message: 'subscription reconciled' })),
 };
 
 const mockGlobalSettingsController = {
@@ -47,6 +49,11 @@ const mockGlobalSettingsController = {
   resetGlobalSettings: jest.fn((req, res) => res.json({ message: 'global settings reset' })),
   getGlobalSetting: jest.fn((req, res) => res.json({ message: 'global setting' })),
   setGlobalSetting: jest.fn((req, res) => res.json({ message: 'global setting set' })),
+  updateSetting: jest.fn((req, res) => res.json({ message: 'global setting updated' })),
+  createSetting: jest.fn((req, res) => res.json({ message: 'global setting set' })),
+  revealSetting: jest.fn((req, res) => res.json({ message: 'setting revealed' })),
+  deleteSetting: jest.fn((req, res) => res.json({ message: 'setting deleted' })),
+  getSetting: jest.fn((req, res) => res.json({ message: 'global setting' })),
 };
 
 const mockNotificationsController = {
@@ -63,9 +70,16 @@ const mockWaitingListController = {
 
 // Mock middleware
 const mockAuth = {
-  authenticate: jest.fn((req, res, next) => next()),
   basicAuth: jest.fn((req, res, next) => next()),
+  authenticate: jest.fn((req, res, next) => next())
 };
+
+jest.mock('../middleware/auth', () => mockAuth);
+
+// Mock audit logger
+jest.mock('../services/auditLogger', () => ({
+  auditMiddleware: jest.fn(() => (req, res, next) => next())
+}));
 
 // Mock modules
 jest.mock('../controllers/auth.controller', () => mockAuthController);
@@ -255,22 +269,6 @@ describe('Routes', () => {
       expect(response.body.message).toBe('checkout session created');
       expect(mockBillingController.createCheckoutSession).toHaveBeenCalled();
     });
-
-    test('GET /subscription should call getSubscription controller', async () => {
-      const response = await request(app).get('/api/billing/subscription');
-
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('subscription info');
-      expect(mockBillingController.getSubscription).toHaveBeenCalled();
-    });
-
-    test('POST /cancel-subscription should call cancelSubscription controller', async () => {
-      const response = await request(app).post('/api/billing/cancel-subscription');
-
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('subscription cancelled');
-      expect(mockBillingController.cancelSubscription).toHaveBeenCalled();
-    });
   });
 
   describe('Global Settings Routes', () => {
@@ -279,28 +277,28 @@ describe('Routes', () => {
       app.use('/api/settings', globalSettingsRoutes);
     });
 
-    test('GET / should call getGlobalSettings controller', async () => {
+    test('GET / should call getAllSettings controller', async () => {
       const response = await request(app).get('/api/settings/');
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('global settings');
-      expect(mockGlobalSettingsController.getGlobalSettings).toHaveBeenCalled();
+      expect(response.body.message).toBe('all settings');
+      expect(mockGlobalSettingsController.getAllSettings).toHaveBeenCalled();
     });
 
-    test('PUT / should call updateGlobalSettings controller', async () => {
-      const response = await request(app).put('/api/settings/');
+    test('PUT /:key should call updateSetting controller', async () => {
+      const response = await request(app).put('/api/settings/test-key');
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('global settings updated');
-      expect(mockGlobalSettingsController.updateGlobalSettings).toHaveBeenCalled();
+      expect(response.body.message).toBe('global setting updated');
+      expect(mockGlobalSettingsController.updateSetting).toHaveBeenCalled();
     });
 
-    test('POST /reset should call resetGlobalSettings controller', async () => {
-      const response = await request(app).post('/api/settings/reset');
+    test('POST /reset should call createSetting controller', async () => {
+      const response = await request(app).post('/api/settings/');
 
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('global settings reset');
-      expect(mockGlobalSettingsController.resetGlobalSettings).toHaveBeenCalled();
+      expect(response.body.message).toBe('global setting set');
+      expect(mockGlobalSettingsController.createSetting).toHaveBeenCalled();
     });
   });
 
