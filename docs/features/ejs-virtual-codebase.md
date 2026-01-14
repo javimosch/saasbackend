@@ -9,7 +9,7 @@ This feature adds an optional “virtual EJS codebase” layer.
 
 ## Runtime behavior
 ### DB-first resolution
-When the host app opts into rendering through `saasbackend.services.ejsVirtual.render(res, viewPath, data)`:
+When the host app opts into rendering through `@intranefr/superbackend.services.ejsVirtual.render(res, viewPath, data)`:
 
 - If a DB override exists for `viewPath` and it is enabled, it is rendered.
 - Otherwise, the filesystem template is rendered.
@@ -26,7 +26,7 @@ When the host app opts into rendering through `saasbackend.services.ejsVirtual.r
 
 ## Admin UI
 Access via:
-- `saasbackend` admin test page → **EJS Virtual Codebase**
+- `@intranefr/superbackend` admin test page → **EJS Virtual Codebase**
 
 Capabilities:
 - Browse EJS files
@@ -65,7 +65,7 @@ If no provider can be resolved, vibe coding fails with a validation error.
 The host app must opt in per route.
 
 In `apres-parties`, only the home page is integrated initially:
-- `/` uses `saasbackend.services.ejsVirtual.render(res, 'public/home', {})`
+- `/` uses `@intranefr/superbackend.services.ejsVirtual.render(res, 'public/home', {})`
 
 ## Data model
 - `VirtualEjsFile`: current override state
