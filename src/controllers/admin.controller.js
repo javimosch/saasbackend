@@ -290,7 +290,7 @@ const provisionCoolifyDeploy = asyncHandler(async (req, res) => {
       });
     }
 
-    // In ref-saasbackend, manage.sh already exists in the root of the repository
+    // In ref-superbackend, manage.sh already exists in the root of the repository
     // If it didn't, we would write it here. For this case, we'll just success.
     res.json({
       success: true,
